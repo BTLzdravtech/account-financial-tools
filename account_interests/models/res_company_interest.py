@@ -141,6 +141,8 @@ class ResCompanyInterest(models.Model):
             ('partner_id.active', '=', True),
             ('parent_state', '=', 'posted'),
         ]
+        if self.domain:
+            move_line_domain += safe_eval(self.domain)
         return move_line_domain
 
     def _update_deuda(self, deuda, partner, key, value):
@@ -174,7 +176,7 @@ class ResCompanyInterest(models.Model):
             aggregates=['amount_residual:sum'],
         )
         for x in previous_grouped_lines:
-            self._update_deuda(deuda, x[0], 'Deuda periodos anteriores', x[1] * self.rate)
+            self._update_deuda(deuda, x[0], 'Deuda periodos anteriores', x[1] * self.rate * self.interval)
 
         # Intereses por el último período
         last_period_lines = self.env['account.move.line'].search(
@@ -182,7 +184,7 @@ class ResCompanyInterest(models.Model):
         )
         for partner, amls in last_period_lines.grouped('partner_id').items():
             interest = sum(
-                move.amount_residual * ((to_date - move.invoice_date_due).days - 1) * (self.rate / interest_rate[self.rule_type])
+                move.amount_residual * ((to_date - move.invoice_date_due).days) * (self.rate / interest_rate[self.rule_type])
                 for move, lines in amls.grouped('move_id').items()
             )
             self._update_deuda(deuda, partner, 'Deuda último periodo', interest)
@@ -190,26 +192,25 @@ class ResCompanyInterest(models.Model):
         # Intereses por pagos tardíos
         if self.late_payment_interest:
 
-            partials = self.env['account.partial.reconcile'].search([
+            partial_domain = [
                 # lo dejamos para NTH
                 # debit_move_id. safe eval domain
                 ('debit_move_id.partner_id.active', '=', True),
-                ('debit_move_id.date_maturity', '>=', from_date),
-                ('debit_move_id.date_maturity', '<=', to_date),
                 ('debit_move_id.parent_state', '=', 'posted'),
                 ('debit_move_id.account_id', 'in', self.receivable_account_ids.ids),
                 ('credit_move_id.date', '>=', from_date),
-                ('credit_move_id.date', '<', to_date)]).grouped('debit_move_id')
-
+                ('credit_move_id.date', '<', to_date)]
+            
+            if self.domain:
+                partial_domain.append(('debit_move_id', 'any', safe_eval(self.domain)))
+            
+            partials = self.env['account.partial.reconcile'].search(partial_domain).filtered(lambda x: x.credit_move_id.date > x.debit_move_id.date_maturity).grouped('debit_move_id')
             for move_line, parts in partials.items():
-                due_payments = parts.filtered(lambda x: x.credit_move_id.date > x.debit_move_id.date_maturity)
-                interest = 0
-                if due_payments:
-                    due_payments_amount = sum(due_payments.mapped('amount'))
-                    last_date_payment = parts.filtered(lambda x: x.credit_move_id.date > x.debit_move_id.date_maturity).sorted('max_date')[-1].max_date
-                    days = (last_date_payment - move_line.date_maturity).days
-                    interest += due_payments_amount * days * (self.rate / interest_rate[self.rule_type])
-                    self._update_deuda(deuda, move_line.partner_id, 'Deuda pagos vencidos', interest)
+                due_date = max(from_date, parts.debit_move_id.date_maturity)
+
+                days = (parts.credit_move_id.date - due_date).days
+                interest =  parts.amount * days * (self.rate / interest_rate[self.rule_type])
+            self._update_deuda(deuda, move_line.partner_id, 'Deuda pagos vencidos', interest)
 
         return deuda
 
@@ -277,6 +278,10 @@ class ResCompanyInterest(models.Model):
         Retorna un diccionario con los datos para crear la factura
         """
         self.ensure_one()
+        
+        if not debt.get('Deuda periodos anteriores') and not debt.get('Deuda último periodo') and not debt.get('Deuda pagos vencidos'):
+            _logger.info("Debt is negative, skipping...")
+            return
 
         comment = self._prepare_info(to_date)
         fpos = partner.property_account_position_id
