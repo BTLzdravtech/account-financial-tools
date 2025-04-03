@@ -26,23 +26,32 @@ class ResPartner(models.Model):
     def _get_debt_report_lines(self):
         # TODO ver si borramos este metodo que no tiene mucho sentido (get_line_vals)
         def get_line_vals(
-                date=None, name=None, detail_lines=None, date_maturity=None,
-                amount=None, amount_residual=None, balance=None,
-                amount_currency=None,
-                currency_name=None, move_line=None):
+            date=None,
+            name=None,
+            detail_lines=None,
+            date_maturity=None,
+            amount=None,
+            amount_residual=None,
+            balance=None,
+            amount_currency=None,
+            amount_residual_currency=None,
+            currency_name=None,
+            move_line=None,
+        ):
             if not detail_lines:
                 detail_lines = []
             return {
-                'date': date,
-                'name': name,
-                'detail_lines': detail_lines,
-                'date_maturity': date_maturity,
-                'amount': amount,
-                'amount_residual': amount_residual,
-                'balance': balance,
-                'amount_currency': amount_currency,
-                'currency_name': currency_name,
-                'move_line': move_line,
+                "date": date,
+                "name": name,
+                "detail_lines": detail_lines,
+                "date_maturity": date_maturity,
+                "amount": amount,
+                "amount_residual": amount_residual,
+                "balance": balance,
+                "amount_currency": amount_currency,
+                "amount_residual_currency": amount_residual_currency,
+                "currency_name": currency_name,
+                "move_line": move_line,
             }
 
         self.ensure_one()
@@ -53,7 +62,8 @@ class ResPartner(models.Model):
         historical_full = self._context.get('historical_full', False)
         company_id = self._context.get('company_id', False)
         show_invoice_detail = self._context.get('show_invoice_detail', False)
-        only_currency_lines = not self._context.get('company_currency') and self._context.get('secondary_currency')
+        secondary_currency = self._context.get("secondary_currency")
+        only_currency_lines = not self._context.get('company_currency') and secondary_currency
         balance_in_currency = 0.0
         balance_in_currency_name = ''
         domain = []
@@ -65,7 +75,10 @@ class ResPartner(models.Model):
             domain += [('company_id', 'in', self.env.companies.ids)]
             company_currency_ids = self.env.companies.mapped('currency_id')
         if only_currency_lines and len(company_currency_ids) == 1:
-            domain += [('currency_id', 'not in', company_currency_ids.ids)]
+            domain += [('currency_id', 'not in', company_currency_ids.ids), ('amount_currency', '>', 0.0)]
+
+        if secondary_currency:
+            domain += [('amount_currency', '>', 0.0)]
 
         if not historical_full:
             domain += [('reconciled', '=', False), ('full_reconcile_id', '=', False)]
@@ -133,28 +146,40 @@ class ResPartner(models.Model):
             amount = record.balance
             amount_residual = record.amount_residual
             amount_currency = record.amount_currency
+            amount_residual_currency = record.amount_residual_currency
             show_currency = record.currency_id != record.company_id.currency_id
             if record.payment_id:
                 name += ' - ' + record.journal_id.name
 
             # TODO tal vez la suma podriamos probar hacerla en el xls como hacemos en libro iva v11/v12
-            res.append(get_line_vals(
-                date=date,
-                name=name,
-                detail_lines=detail_lines,
-                date_maturity=date_maturity,
-                amount=amount,
-                amount_residual=amount_residual,
-                balance=balance,
-                amount_currency=amount_currency if show_currency else False,
-                currency_name=currency.name if show_currency else False,
-                # move_line=record.move_line_id,
-            ))
+            res.append(
+                get_line_vals(
+                    date=date,
+                    name=name,
+                    detail_lines=detail_lines,
+                    date_maturity=date_maturity,
+                    amount=amount,
+                    amount_residual=amount_residual,
+                    balance=balance,
+                    amount_currency=amount_currency if show_currency else False,
+                    amount_residual_currency=amount_residual_currency if show_currency else False,
+                    currency_name=currency.name if show_currency else False,
+                    # move_line=record.move_line_id,
+                )
+            )
 
         record_currencys = records.filtered(lambda x: x.currency_id != x.company_id.currency_id)
-        if len(record_currencys.mapped('currency_id')) == 1:
-            total_currency = sum(record_currencys.mapped('amount_currency')) + balance_in_currency
-            final_line += [get_line_vals(name=_('Total'), amount_currency=total_currency, currency_name=record_currencys.mapped('currency_id').name)]
+        if len(record_currencys.mapped("currency_id")) == 1:
+            total_currency = sum(record_currencys.mapped("amount_currency")) + balance_in_currency
+            total_residual_currency = sum(record_currencys.mapped("amount_residual_currency"))
+            final_line += [
+                get_line_vals(
+                    name=_("Total"),
+                    amount_currency=total_currency,
+                    amount_residual_currency=total_residual_currency,
+                    currency_name=record_currencys.mapped("currency_id").name,
+                )
+            ]
 
         res += final_line
         return res
