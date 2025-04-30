@@ -11,4 +11,5 @@ class AccountMove(models.Model):
         for rec in with_valuation:
             rec._compute_show_reset_to_draft_button()
             rec.allow_move_with_valuation_cancelation = rec.show_reset_to_draft_button
+            # TODO vk: lock only for arg
             rec.show_reset_to_draft_button = False

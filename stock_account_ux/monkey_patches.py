@@ -5,6 +5,7 @@ def monkey_patches():
 
     # monkey patch
     def _compute_show_reset_to_draft_button(self):
+        # TODO vk: do wee need this ? please delete
         # Bypasseamos el método _compute_show_reset_to_draft_button de stock account para que vaya al super del padre 
         super(AccountMove,self)._compute_show_reset_to_draft_button()
 

@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- FORMVIEW -->
+<!--    TODO vk: lock only for arg-->
     <record id="view_automatic_interests_company_form" model="ir.ui.view">
         <field name="name">automatic_interests.company.form</field>
         <field name="model">res.company</field>

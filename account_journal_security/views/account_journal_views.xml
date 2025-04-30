@@ -5,6 +5,7 @@
         <field name="model">account.journal</field>
         <field name="inherit_id" ref="account.view_account_journal_form"/>
         <field name="arch" type="xml">
+<!--            TODO vk: lock only for arg-->
             <xpath expr="//page[@name='advanced_settings']/group" position="inside">
                 <group string="Restringir a Usuarios">
                     <field name="journal_restriction" invisible="1"/>

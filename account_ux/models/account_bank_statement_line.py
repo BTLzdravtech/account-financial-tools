@@ -21,6 +21,7 @@ class AccountBankStatementLine(models.Model):
         # arreglamos solo los que son una transferencia interna o si hay una linea a cobrar / a pagar porque en 13, cuando conciliabamos contra gasto se generaba un pago
         # pero en este caso odoo ya lo resuelve bien. Si este filtro no llega a ir bien por algo podriamos ver si tiene payment_group_id (pero no es lo mas elegante porque podria
         # haber clientes sin payment_group) o si el payment tiene partner_id
+        # TODO vk: lock only for arg
         st_lines_to_fix = self.filtered(
             lambda x: x.move_id.payment_id.is_internal_transfer or (
                 x.move_id.payment_id

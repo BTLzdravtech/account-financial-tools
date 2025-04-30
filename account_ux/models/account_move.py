@@ -45,6 +45,7 @@ class AccountMove(models.Model):
     def action_post(self):
         """ After validate invoice will sent an email to the partner if the related journal has mail_template_id set """
         res = super().action_post()
+        # TODO vk: lock only for arg
         self.action_send_invoice_mail()
         return res
 
@@ -83,6 +84,7 @@ class AccountMove(models.Model):
             
     @api.onchange('partner_id')
     def _onchange_partner_commercial(self):
+        # TODO vk: lock only for arg
         if self.partner_id.user_id:
             self.invoice_user_id = self.partner_id.user_id.id
 
@@ -102,6 +104,7 @@ class AccountMove(models.Model):
         rate = get_accounting_rate(move.company_id.currency_id, move.amount_total_signed, move.amount_total_in_currency_signed, move.currency_id)
         amount = abs(line.amount_residual) * rate 
         return amount
+
 
     ### Comentamos este método debido a que el campo invoice_outstanding_credits_debits_widget no se estaba seteando correctamente en super
     ### Como FIX agregamos este PR a Odoo: https://github.com/odoo/odoo/pull/170066/files
@@ -142,6 +145,7 @@ class AccountMove(models.Model):
 
     @api.depends('invoice_date')
     def _compute_invoice_date_due(self):
+        # TODO vk: lock for arg
         """ Si la factura no tiene término de pago y la misma tiene fecha de vencimiento anterior al día de hoy y la factura no tiene fecha entonces cuando se publica la factura, la fecha de vencimiento tiene que coincidir con la fecha de hoy. """
         invoices_with_old_data_due = self.filtered(lambda x: x.invoice_date and not x.invoice_payment_term_id and (not x.invoice_date_due or x.invoice_date_due < x.invoice_date))
         invoices = self - invoices_with_old_data_due

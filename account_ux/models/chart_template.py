@@ -5,6 +5,7 @@ class AccountChartTemplate(models.AbstractModel):
     _inherit = "account.chart.template"
 
     def _load(self, template_code, company, install_demo):
+        # TODO vk: do wee need this ?
         res = super()._load(template_code, company, install_demo)
         return res
 

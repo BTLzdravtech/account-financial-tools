@@ -10,6 +10,7 @@ class ResCurrencyRate(models.Model):
 
     @api.constrains('company_id')
     def _check_date_rate(self):
+        # TODO vk: lock for arg
         for rec in self.filtered(lambda x: not x.company_id):
             others_with_company = self.search([
                 ('name', '<=', rec.name),
