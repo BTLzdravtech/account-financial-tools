@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
     <!-- FORMVIEW -->
-<!--    TODO vk: lock only for arg-->
+<!--    DONETODO vk: lock only for arg-->
     <record id="view_automatic_interests_company_form" model="ir.ui.view">
         <field name="name">automatic_interests.company.form</field>
         <field name="model">res.company</field>
         <field name="inherit_id" ref="base.view_company_form"/>
         <field name="arch" type="xml">
             <notebook position="inside">
-                <page string="Overdue Payments">
+                <page string="Overdue Payments" invisible="country_code != 'AR'">
                     <separator string="Intereses Automáticos"/>
                     <field name="interest_ids" context="{'default_company_id': id}">
                         <tree>

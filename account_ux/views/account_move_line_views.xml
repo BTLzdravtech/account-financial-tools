@@ -54,13 +54,13 @@
                 <field name="balance" sum="Total Balance" optional="hide" readonly="1"/>
             </field>
             <field name="discount_amount_currency" position="attributes">
-<!--                # TODO vk: lock only for arg-->
+<!--                # NOTDONETODO vk: lock only for arg-->
                 <attribute name="optional">hide</attribute>
             </field>
             <!-- hacemos siempre visible este campo porque a partir de 16 odoo lo calcula siempre (moneda igual o distinta a la cia). Luego, en las agrupaciones confundia porque sumaba todo pero en realidad el usuario solo veia los que eran en moneda distinta -->
             <field name="amount_residual_currency" position="attributes">
-<!--                # TODO vk: lock only for arg-->
-                <attribute name="invisible">not is_account_reconcile</attribute>
+<!--                # DONETODO vk: lock only for arg-->
+                <attribute name="invisible">not is_account_reconcile and move_id.country_code == 'AR'</attribute>
             </field>
         </field>
     </record>
@@ -72,7 +72,8 @@
         <field name="mode">primary</field>
         <field name="arch" type="xml">
             <!-- sacamos filtro de cuenta la izquierda -->
-<!--                # TODO vk: lock only for arg-->
+<!--                # NOTDONETODO vk: lock only for arg-->
+<!--            this is a search view, i can't hide/show fields based on the value of some field of some record-->
             <field name="account_root_id" position="replace"/>
         </field>
     </record>

@@ -13,18 +13,21 @@ class AccountMove(models.Model):
     avoid_surcharge_invoice = fields.Boolean()
 
     def _cron_recurring_surcharges_invoices(self, batch_size=60):
-        # TODO vk: lock only for arg
-        current_date = fields.Date.context_today(self)
-        domain = [
-            ('next_surcharge_date', '<=', current_date),
-            ('state', '=', 'posted'),
-            ('payment_state', 'in', ['not_paid', 'partial']),
-            ('avoid_surcharge_invoice', '=', False)]
-        _logger.info('Running Surcharges Invoices Cron Job, pendientes por procesar %s facturas' % self.search_count(domain))
-        to_create = self.search(domain)
-        to_create[:batch_size].create_surcharges_invoices()
-        if len(to_create) > batch_size:
-            self.env.ref('account_payment_term_surcharge.cron_recurring_surcharges_invoices')._trigger()
+        # DONETODO vk: lock only for arg
+        if self.company_id.country_id == self.env.ref('base.ar'):
+            current_date = fields.Date.context_today(self)
+            domain = [
+                ('next_surcharge_date', '<=', current_date),
+                ('state', '=', 'posted'),
+                ('payment_state', 'in', ['not_paid', 'partial']),
+                ('avoid_surcharge_invoice', '=', False)]
+            _logger.info('Running Surcharges Invoices Cron Job, pendientes por procesar %s facturas' % self.search_count(domain))
+            to_create = self.search(domain)
+            to_create[:batch_size].create_surcharges_invoices()
+            if len(to_create) > batch_size:
+                self.env.ref('account_payment_term_surcharge.cron_recurring_surcharges_invoices')._trigger()
+        else:
+            return super()._cron_recurring_surcharges_invoices(batch_size=batch_size)
 
     def create_surcharges_invoices(self):
         invoice_with_errors = []

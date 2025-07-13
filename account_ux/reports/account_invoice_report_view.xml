@@ -6,7 +6,8 @@
         <field name="model">account.invoice.report</field>
         <field name="inherit_id" ref="account.account_invoice_report_view_tree"/>
         <field name="arch" type="xml">
-<!--            TODO vk: lock only for arg-->
+<!--            NOTDONETODO vk: lock only for arg-->
+            <!--                this is a tree, i can't hide columns based on the value of some field-->
             <xpath expr="//tree" position="attributes">
                 <attribute name="decoration-info">state == 'draft'</attribute>
                 <attribute name="decoration-muted">state == 'cancel'</attribute>
@@ -44,7 +45,8 @@
         <field name="inherit_id" ref="account.view_account_invoice_report_pivot"/>
         <field name="arch" type="xml">
             <pivot position="attributes">
-<!--                # TODO vk: lock only for arg - tohle je dela neclicable tak nevim jestli to chceme-->
+<!--                # NOTDONETODO vk: lock only for arg - tohle je dela neclicable tak nevim jestli to chceme-->
+<!--                this is a pivot, i can't change the pivot attributes based on the value of some field of some record-->
                 <attribute name="disable_linking"></attribute>
             </pivot>
         </field>
@@ -55,7 +57,8 @@
         <field name="view_mode">tree,graph,pivot</field>
         <field name="context">{'search_default_current':1}</field>
         <field name="search_view_id" ref="account.view_account_invoice_report_search"/>
-<!--        # TODO vk: deleting too much context, why we need this-->
+<!--        # NOTDONETODO vk: deleting too much context, why we need this-->
+<!--        nothing to do -->
     </record>
 
 </odoo>

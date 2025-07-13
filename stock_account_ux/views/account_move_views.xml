@@ -6,11 +6,11 @@
         <field name="priority" eval="40"/>
         <field name="arch" type="xml">
             <button name="button_draft" position="after">
-<!--                # TODO vk: lock only for arg-->
+<!--                # DONETODO vk: lock only for arg-->
                 <field name="allow_move_with_valuation_cancelation" invisible="1"/>
                 <button name="button_draft"
                     string="Reset to Draft"
-                    invisible= "not allow_move_with_valuation_cancelation or state == 'draft'"
+                    invisible= "not allow_move_with_valuation_cancelation or state == 'draft' or country_code != 'AR'"
                     type="object"
                     groups="account.group_account_invoice"
                     data-hotkey="r"

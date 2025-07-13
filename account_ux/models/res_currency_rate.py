@@ -10,17 +10,21 @@ class ResCurrencyRate(models.Model):
 
     @api.constrains('company_id')
     def _check_date_rate(self):
-        # TODO vk: lock for arg
-        for rec in self.filtered(lambda x: not x.company_id):
-            others_with_company = self.search([
-                ('name', '<=', rec.name),
-                ('currency_id', '=', rec.currency_id.id),
-                ('company_id', '!=', False),
-            ])
-            if others_with_company:
-                raise ValidationError(_(
-                    'You can not create a rate without company'
-                    ' since you already have rates before %s with'
-                    ' company set. The rate you want to create will not'
-                    ' have any effect, will not be take into account.'
-                ) % rec.name)
+        # DONETODO vk: lock for arg
+        if self.company_id.country_id == self.env.ref('base.ar'):
+            for rec in self.filtered(lambda x: not x.company_id):
+                others_with_company = self.search([
+                    ('name', '<=', rec.name),
+                    ('currency_id', '=', rec.currency_id.id),
+                    ('company_id', '!=', False),
+                ])
+                if others_with_company:
+                    raise ValidationError(_(
+                        'You can not create a rate without company'
+                        ' since you already have rates before %s with'
+                        ' company set. The rate you want to create will not'
+                        ' have any effect, will not be take into account.'
+                    ) % rec.name)
+        else:
+            return super()._check_date_rate()
+

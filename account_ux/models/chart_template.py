@@ -5,9 +5,11 @@ class AccountChartTemplate(models.AbstractModel):
     _inherit = "account.chart.template"
 
     def _load(self, template_code, company, install_demo):
-        # TODO vk: do wee need this ?
-        res = super()._load(template_code, company, install_demo)
-        return res
+        # DONETODO vk: do wee need this ?
+        if self.company_id.country_id == self.env.ref('base.ar'):
+            res = super()._load(template_code, company, install_demo)
+            return res
+        return super()._load(template_code, company, install_demo)  # the same...
 
     def _post_load_data(self, template_code, company, template_data):
         super()._post_load_data(template_code, company, template_data)
