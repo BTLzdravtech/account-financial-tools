@@ -1,13 +1,13 @@
 <?xml version="1.0" encoding="utf-8"?>
 <odoo>
 
-    <record id="view_account_invoice_line_report_tree" model="ir.ui.view">
+    <record id="view_account_invoice_line_report_tree_ar" model="ir.ui.view">
         <field name="name">account.invoice.report.tree</field>
         <field name="model">account.invoice.report</field>
+        <field name="mode">primary</field>
         <field name="inherit_id" ref="account.account_invoice_report_view_tree"/>
         <field name="arch" type="xml">
-<!--            NOTDONETODO vk: lock only for arg-->
-            <!--                this is a tree, i can't hide columns based on the value of some field-->
+<!--            DONETODO vk: lock only for arg-->
             <xpath expr="//tree" position="attributes">
                 <attribute name="decoration-info">state == 'draft'</attribute>
                 <attribute name="decoration-muted">state == 'cancel'</attribute>
@@ -45,9 +45,8 @@
         <field name="inherit_id" ref="account.view_account_invoice_report_pivot"/>
         <field name="arch" type="xml">
             <pivot position="attributes">
-<!--                # NOTDONETODO vk: lock only for arg - tohle je dela neclicable tak nevim jestli to chceme-->
-<!--                this is a pivot, i can't change the pivot attributes based on the value of some field of some record-->
-                <attribute name="disable_linking"></attribute>
+<!--                # DONETODO vk: lock only for arg - tohle je dela neclicable tak nevim jestli to chceme-->
+                <attribute name="disable_linking">country_code == 'AR'</attribute>
             </pivot>
         </field>
     </record>
@@ -57,7 +56,7 @@
         <field name="view_mode">tree,graph,pivot</field>
         <field name="context">{'search_default_current':1}</field>
         <field name="search_view_id" ref="account.view_account_invoice_report_search"/>
-<!--        # NOTDONETODO vk: deleting too much context, why we need this-->
+<!--        # DONETODO vk: deleting too much context, why we need this-->
 <!--        nothing to do -->
     </record>
 

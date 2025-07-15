@@ -33,8 +33,7 @@ class AccountPayment(models.Model):
         if self.company_id.country_id == self.env.ref('base.ar'):
             if not self.journal_id or self.journal_id not in self.available_journal_ids._origin:
                 self.journal_id = self.available_journal_ids._origin[:1]
-        else:
-            super()._onchange_available_journal_ids()
+
 
     @api.ondelete(at_uninstall=False)
     def _check_payment_state(self):

@@ -89,8 +89,7 @@ class AccountMove(models.Model):
         if self.company_id.country_id == self.env.ref('base.ar'):
             if self.partner_id.user_id:
                 self.invoice_user_id = self.partner_id.user_id.id
-        else:
-            return super()._onchange_partner_commercial()
+
 
     def copy(self, default=None):
         res = super().copy(default=default)
@@ -157,7 +156,7 @@ class AccountMove(models.Model):
             for inv in invoices_with_old_data_due:
                 if inv.invoice_date:
                     inv.invoice_date_due = inv.invoice_date
-        return super(AccountMove, invoices)._compute_invoice_date_due()
+        return super()._compute_invoice_date_due()
 
     @api.constrains('date', 'invoice_date')
     def _check_dates_on_invoices(self):
