@@ -167,3 +167,13 @@ class AccountMove(models.Model):
             for rec in invoices_to_check:
                 error_msg +=  str(rec.date) + '\t'*2 + str(rec.invoice_date) + '\t'*3 + rec.display_name + '\n'
             raise UserError(_('The date and invoice date of a sale invoice must be the same: %s') % (error_msg))
+
+
+    # @api.model
+    # def get_view(self, view_id=None, view_type="form", **options):
+    #     ctx = self.env.context.copy()
+    #     if view_type == "form" and self.env.company.country_code == "AR":
+    #         view_id = self.env.ref("account_ux.view_move_form_ar").id
+    #     if view_type == "filter" and self.env.company.country_code == "AR":
+    #         view_id = self.env.ref("account_ux.view_account_invoice_filter_ar").id
+    #     return super().get_view(view_id=view_id, view_type=view_type, **options)
