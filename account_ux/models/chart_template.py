@@ -6,7 +6,7 @@ class AccountChartTemplate(models.AbstractModel):
 
     def _load(self, template_code, company, install_demo):
         # DONETODO vk: do wee need this ?
-        if self.company_id.country_id == self.env.ref('base.ar'):
+        if self.env.company.country_code == 'AR':
             res = super()._load(template_code, company, install_demo)
             return res
         return super()._load(template_code, company, install_demo)  # the same...

@@ -1,10 +1,9 @@
 <odoo>
 
-    <record id="view_move_form_ar" model="ir.ui.view">
+    <record id="view_move_form" model="ir.ui.view">
         <field name="model">account.move</field>
         <field name="name">account.move.form</field>
         <field name="inherit_id" ref="account.view_move_form"/>
-        <field name="mode">primary</field>
         <!-- higher priority so that secondary currency (added by other module but inheriting this one) is shown right after this module -->
         <field name="priority" eval="20"/>
         <field name="arch" type="xml">
@@ -15,12 +14,12 @@
             </field>
             <!-- odoo lo hace invisible si la company tiene tax_calculation_rounding_method = rounding globally, -->
             <!-- nosotros dejamos que sin importqar ese parametro se puedamos mostrar -->
-<!--                # DONETODO vk: lock only for arg-->
+<!--                # TODO vk: lock only for arg-->
             <field name="price_total" position="attributes">
                 <attribute name="column_invisible"></attribute>
             </field>
 
-<!--                # DONETODO vk: lock only for arg-->
+<!--                # TODO vk: lock only for arg-->
             <button name="button_draft" position="after">
                 <button name="delete_number" string="Delete Number" invisible="state != 'cancel' or not name or name == '/'" type="object" help="Deleting the number will allow you to delete this invoice or to get a new number if you re-validate it. If this invoice represents a voided invoice, then you should not clean it." confirm="Warning! This can't be undone. Deleting the number will allow you to delete this invoice or to get a new number if you re-validate it. If this invoice represents a voided invoice, then you should not clean it. Do you want to continue?" groups="account.group_account_manager"/>
             </button>
@@ -30,7 +29,7 @@
             </field>
 
             <!-- odoo la hace visible o no segun una clave de contexto view_no_maturity, nosotros la queremos siempre visible (pero con opcional) -->
-<!--                # DONETODO vk: lock only for arg-->
+<!--                # TODO vk: lock only for arg-->
             <xpath expr="//field[@name='line_ids']//field[@name='date_maturity']" position="attributes">
                 <attribute name="column_invisible"/>
                 <attribute name="optional">hide</attribute>
@@ -39,7 +38,7 @@
             <!-- similar modification to these are don on l10n_ar_ux for debit_origin_id -->
             <!-- odoo deja modificar el origen pero si el usuario lo borra ya no lo ve mas y no se puede revertir. ademas nos parece practico que pueda completarlo para, por ej, vincular factura creada manualmente a una OV -->
             <!-- es readonly por python, lo hacemos editable -->
-<!--                # DONETODO vk: lock only for arg-->
+<!--                # TODO vk: lock only for arg-->
             <field name="invoice_origin" position="attributes">
                 <attribute name="invisible"/>
                 <attribute name="readonly">False</attribute>
@@ -49,7 +48,7 @@
                 <field name="invoice_origin" force_save="1" string="Source Document" readonly="False" invisible="move_type not in ('in_invoice', 'in_refund')"/>
             </field>
             <!-- permitimos modificar "Reversion de" para poder vincular NC creadas a mano -->
-<!--                # DONETODO vk: lock only for arg-->
+<!--                # TODO vk: lock only for arg-->
             <field name="reversed_entry_id" position="attributes">
                 <attribute name="invisible"/>
                 <!-- domain only for customer invoices because on supplier bills for now is not visible -->
@@ -60,7 +59,7 @@
                 <field name="reversed_entry_id" invisible="move_type != 'out_refund'" readonly="state != 'draft'"/>
             </field>
 
-<!--                # DONETODO vk: lock only for arg-->
+<!--                # TODO vk: lock only for arg-->
             <xpath expr="//div[@name='journal_div']/field[@name='currency_id']" position="attributes">
                 <attribute name="readonly">True</attribute>
                 <attribute name="force_save">1</attribute>
@@ -80,15 +79,14 @@
         </field>
     </record>
 
-    <record id="view_move_form_debi_t" model="ir.ui.view">
+    <record id="view_move_form_debit" model="ir.ui.view">
         <field name="model">account.move</field>
         <field name="name">account.move.form</field>
         <field name="inherit_id" ref="account_debit_note.view_move_form_debit"/>
         <field name="arch" type="xml">
 
             <!-- permitimos modificar "Factura origne de la ND" para poder vincular ND creadas a mano -->
-<!--                # NOTDONETODO vk: lock only for arg
-(find a way to modify this and don't break the get_view method)-->
+<!--                # TODO vk: lock only for arg-->
             <xpath expr="//group[@name='sale_info_group']/field[@name='debit_origin_id']" position="attributes">
                 <attribute name="invisible">move_type != 'out_invoice'</attribute>
                 <attribute name="readonly">state != 'draft'</attribute>
@@ -97,16 +95,15 @@
         </field>
     </record>
 
-    <record id="view_account_invoice_filter_ar" model="ir.ui.view">
+    <record id="view_account_invoice_filter" model="ir.ui.view">
         <field name="name">invoice.view.select</field>
         <field name="model">account.move</field>
-        <field name="mode">primary</field>
         <field name="inherit_id" ref="account.view_account_invoice_filter"/>
         <field name="arch" type="xml">
             <field name="partner_id" position="before">
                 <field name="company_id" groups="base.group_multi_company"/>
             </field>
-<!--                # DONETODO vk: lock only for arg-->
+<!--                # TODO vk: lock only for arg-->
             <xpath expr="//filter[@name='closed']" position="replace">
                 <filter name="closed" string="Paid" domain="[('state', '=', 'posted'), ('payment_state', 'in', ('in_payment', 'paid','reversed'))]"/>
             </xpath>
@@ -135,9 +132,9 @@
         <field name="model">account.move.line</field>
         <field name="inherit_id" ref="account.view_move_line_form"/>
         <field name="arch" type="xml">
-<!--                # DONETODO vk: lock only for arg-->
+<!--                # TODO vk: lock only for arg-->
             <field name="amount_currency" position="attributes">
-                <attribute name="readonly">company_id.country_code == 'AR'</attribute>
+                <attribute name="readonly">1</attribute>
             </field>
         </field>
     </record>

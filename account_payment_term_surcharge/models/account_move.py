@@ -26,8 +26,7 @@ class AccountMove(models.Model):
             to_create[:batch_size].create_surcharges_invoices()
             if len(to_create) > batch_size:
                 self.env.ref('account_payment_term_surcharge.cron_recurring_surcharges_invoices')._trigger()
-        else:
-            return super()._cron_recurring_surcharges_invoices(batch_size=batch_size)
+
 
     def create_surcharges_invoices(self):
         invoice_with_errors = []
