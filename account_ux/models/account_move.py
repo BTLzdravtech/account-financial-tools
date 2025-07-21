@@ -44,7 +44,6 @@ class AccountMove(models.Model):
     def action_post(self):
         """ After validate invoice will sent an email to the partner if the related journal has mail_template_id set """
         res = super().action_post()
-        # DONETODO vk: lock only for arg
         if self.company_id.country_id == self.env.ref('base.ar'):
             self.action_send_invoice_mail()
         return res
@@ -84,7 +83,6 @@ class AccountMove(models.Model):
             
     @api.onchange('partner_id')
     def _onchange_partner_commercial(self):
-        # DONETODO vk: lock only for arg
         if self.company_id.country_id == self.env.ref('base.ar'):
             if self.partner_id.user_id:
                 self.invoice_user_id = self.partner_id.user_id.id
@@ -147,7 +145,6 @@ class AccountMove(models.Model):
 
     @api.depends('invoice_date')
     def _compute_invoice_date_due(self):
-        # DONETODO vk: lock for arg
         if self.company_id.country_id == self.env.ref('base.ar'):
             """ Si la factura no tiene término de pago y la misma tiene fecha de vencimiento anterior al día de hoy y la factura no tiene fecha entonces cuando se publica la factura, la fecha de vencimiento tiene que coincidir con la fecha de hoy. """
             invoices_with_old_data_due = self.filtered(lambda x: x.invoice_date and not x.invoice_payment_term_id and (not x.invoice_date_due or x.invoice_date_due < x.invoice_date))

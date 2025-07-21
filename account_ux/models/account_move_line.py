@@ -18,7 +18,6 @@ class AccountMoveLine(models.Model):
 
     @api.model
     def _prepare_reconciliation_single_partial(self, debit_values, credit_values, shadowed_aml_values=None):
-        # DONETODO vk: lock only for arg
         if self.company_id.country_id != self.env.ref('base.ar'):
             return super()._prepare_reconciliation_single_partial(debit_values, credit_values, shadowed_aml_values)
 
@@ -95,7 +94,6 @@ class AccountMoveLine(models.Model):
         return res
 
     def _compute_amount_residual(self):
-        # DONETODO vk: lock only for arg
         if self.company_id.country_id != self.env.ref('base.ar'):
             return super()._compute_amount_residual()
 

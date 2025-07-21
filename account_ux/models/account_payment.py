@@ -14,7 +14,6 @@ class AccountPayment(models.Model):
     )
 
     def _compute_is_internal_transfer(self):
-        # DONETODO vk: lock only for arg
         super()._compute_is_internal_transfer()
         if self.company_id.country_id == self.env.ref('base.ar'):
             if self._context.get('is_internal_transfer_menu'):
@@ -29,7 +28,6 @@ class AccountPayment(models.Model):
     def _onchange_available_journal_ids(self):
         """ Fix the use case where a journal only suitable for one kind of operation (lets said inbound) is selected
         and then the user selects "outbound" type, the journals remains selected."""
-        # DONETODO vk: lock only for arg
         if self.company_id.country_id == self.env.ref('base.ar'):
             if not self.journal_id or self.journal_id not in self.available_journal_ids._origin:
                 self.journal_id = self.available_journal_ids._origin[:1]

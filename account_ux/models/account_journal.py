@@ -27,7 +27,6 @@ class AccountJournal(models.Model):
     def write(self, vals):
         """ We need to allow to change to False the value for restricted for hash for the journal when this value is setted.
         """
-        # DONETODO vk: lock for arg
         if self.company_id.country_id == self.env.ref('base.ar'):
             if 'restrict_mode_hash_table' in vals and not vals.get('restrict_mode_hash_table'):
                 restrict_mode_hash_table = vals.get('restrict_mode_hash_table')

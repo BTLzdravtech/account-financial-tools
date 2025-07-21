@@ -13,7 +13,6 @@ class AccountMove(models.Model):
     avoid_surcharge_invoice = fields.Boolean()
 
     def _cron_recurring_surcharges_invoices(self, batch_size=60):
-        # DONETODO vk: lock only for arg
         if self.company_id.country_id == self.env.ref('base.ar'):
             current_date = fields.Date.context_today(self)
             domain = [

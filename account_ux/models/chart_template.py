@@ -5,7 +5,7 @@ class AccountChartTemplate(models.AbstractModel):
     _inherit = "account.chart.template"
 
     def _load(self, template_code, company, install_demo):
-        # DONETODO vk: do wee need this ?
+        # TODO os: why there is function that call only super, please delete it
         if self.env.company.country_code == 'AR':
             res = super()._load(template_code, company, install_demo)
             return res
