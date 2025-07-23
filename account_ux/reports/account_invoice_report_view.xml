@@ -6,7 +6,6 @@
         <field name="model">account.invoice.report</field>
         <field name="inherit_id" ref="account.account_invoice_report_view_tree"/>
         <field name="arch" type="xml">
-<!--            TODO vk: lock only for arg-->
             <xpath expr="//tree" position="attributes">
                 <attribute name="decoration-info">state == 'draft'</attribute>
                 <attribute name="decoration-muted">state == 'cancel'</attribute>
@@ -44,18 +43,17 @@
         <field name="inherit_id" ref="account.view_account_invoice_report_pivot"/>
         <field name="arch" type="xml">
             <pivot position="attributes">
-<!--                # TODO vk: lock only for arg - tohle je dela neclicable tak nevim jestli to chceme-->
                 <attribute name="disable_linking"></attribute>
             </pivot>
         </field>
     </record>
 
+    <!-- # TODO os: lock only for arg -->
     <record id="account.action_account_invoice_report_all" model="ir.actions.act_window">
         <field name="res_model">account.invoice.report</field>
         <field name="view_mode">tree,graph,pivot</field>
         <field name="context">{'search_default_current':1}</field>
         <field name="search_view_id" ref="account.view_account_invoice_report_search"/>
-<!--        # TODO vk: deleting too much context, why we need this-->
     </record>
 
 </odoo>
