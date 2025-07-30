@@ -4,12 +4,7 @@ from odoo import models
 class AccountChartTemplate(models.AbstractModel):
     _inherit = "account.chart.template"
 
-    def _load(self, template_code, company, install_demo):
-        # TODO os: why there is function that call only super, please delete it
-        if self.env.company.country_code == 'AR':
-            res = super()._load(template_code, company, install_demo)
-            return res
-        return super()._load(template_code, company, install_demo)  # the same...
+
 
     def _post_load_data(self, template_code, company, template_data):
         super()._post_load_data(template_code, company, template_data)
