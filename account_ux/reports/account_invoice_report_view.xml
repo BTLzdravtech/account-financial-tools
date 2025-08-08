@@ -48,7 +48,7 @@
         </field>
     </record>
 
-    <!-- # TODO os: lock only for arg -->
+    <!-- TODO os: lock only for arg -->
     <record id="account.action_account_invoice_report_all" model="ir.actions.act_window">
         <field name="res_model">account.invoice.report</field>
         <field name="view_mode">tree,graph,pivot</field>
