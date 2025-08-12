@@ -24,6 +24,3 @@ class ResCurrencyRate(models.Model):
                         ' company set. The rate you want to create will not'
                         ' have any effect, will not be take into account.'
                     ) % rec.name)
-        else:
-            return super()._check_date_rate()
-
