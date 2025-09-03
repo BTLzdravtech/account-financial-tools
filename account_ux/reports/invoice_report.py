@@ -27,6 +27,7 @@ class AccountInvoiceReport(models.Model):
     _depends = {'account.move.line': ['price_unit', 'discount']}
 
     def _select(self):
+        # if self.env.company.country_id.code == "AR":
         return super()._select() + """,
             line.price_unit,
             line.id as line_id,
@@ -38,14 +39,17 @@ class AccountInvoiceReport(models.Model):
             -line.balance * (line.price_total / NULLIF(line.price_subtotal, 0.0))    AS total_cc,
             line.price_subtotal * (CASE WHEN move.move_type IN ('in_refund', 'out_invoice') THEN 1 ELSE -1 END) as price_subtotal_ic
             """
+        # else:
+        #     return super()._select() + """,
+        #         (0.0) as price_unit,
+        #         (0.0) as price_subtotal_ic,
+        #         (0.0) as total_cc,
+        #         move.currency_id as invoice_currency_id
+        #         """
 
     def _group_by(self):
-        return super()._group_by() + ", move.invoice_currency_id"
+        if self.env.company.country_id.code == "AR":
+            return super()._group_by() + ", move.invoice_currency_id"
+        else:
+            return super()._group_by()
 
-
-
-    # @api.model
-    # def get_view(self, view_id=None, view_type="form", **options):
-    #     if view_type == "tree" and self.env.company.country_code == "AR":
-    #         view_id = self.env.ref("account_ux.view_account_invoice_line_report_tree_ar").id
-    #     return super().get_view(view_id=view_id, view_type=view_type, **options)
