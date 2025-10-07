@@ -3,15 +3,15 @@
 # 	* account_journal_security
 # 
 # Translators:
-# Juan José Scarafía <scarafia.juanjose@gmail.com>, 2023
+# Juan José Scarafía <scarafia.juanjose@gmail.com>, 2025
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server 17.0+e\n"
+"Project-Id-Version: Odoo Server 18.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-08-05 12:40+0000\n"
-"PO-Revision-Date: 2023-12-15 12:26+0000\n"
-"Last-Translator: Juan José Scarafía <scarafia.juanjose@gmail.com>, 2023\n"
+"POT-Creation-Date: 2025-05-28 15:44+0000\n"
+"PO-Revision-Date: 2024-12-12 18:23+0000\n"
+"Last-Translator: Juan José Scarafía <scarafia.juanjose@gmail.com>, 2025\n"
 "Language-Team: Spanish (https://app.transifex.com/adhoc/teams/46451/es/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -23,9 +23,8 @@ msgstr ""
 #: model_terms:ir.ui.view,arch_db:account_journal_security.view_journal_security_account_journal_form
 msgid ""
 "<b>IMPORTANTE:</b> Los usuarios que no estén en la lista no podrán ver "
-"facturas, pagos, asiento o apuntes contables en este diario, pero si podrán "
-"ver información relativa a este diario en, por ejemplo, resumen de cuenta, "
-"detalle de deuda e informes contables."
+"facturas, pagos, asientos, apuntes contables ni ninguna información "
+"relacionada a este diario en el sistema."
 msgstr ""
 
 #. module: account_journal_security
@@ -52,7 +51,6 @@ msgstr ""
 #: model:ir.model,name:account_journal_security.model_account_journal
 #: model:ir.model.fields,field_description:account_journal_security.field_account_bank_statement_line__journal_id
 #: model:ir.model.fields,field_description:account_journal_security.field_account_move__journal_id
-#: model:ir.model.fields,field_description:account_journal_security.field_account_payment__journal_id
 msgid "Journal"
 msgstr "Diario"
 
@@ -73,8 +71,8 @@ msgstr "Diarios de modificacion"
 
 #. module: account_journal_security
 #: model:ir.model.fields,field_description:account_journal_security.field_account_journal__modification_user_ids
-msgid "Modifications restricted to"
-msgstr "Modificaciones restringidas a:"
+msgid "Modifications allowed to"
+msgstr "Modificaciones permitidas a:"
 
 #. module: account_journal_security
 #: model:ir.model.fields.selection,name:account_journal_security.selection__account_journal__journal_restriction__none
@@ -84,7 +82,6 @@ msgstr ""
 #. module: account_journal_security
 #. odoo-python
 #: code:addons/account_journal_security/models/account_journal.py:0
-#, python-format
 msgid ""
 "No puede restringir el diario \"%s\" a usuarios sin inclurise a usted mismo "
 "ya que dejaria de ver este diario"
@@ -93,7 +90,6 @@ msgstr ""
 #. module: account_journal_security
 #. odoo-python
 #: code:addons/account_journal_security/models/account_journal.py:0
-#, python-format
 msgid ""
 "No puede setear valores en \"Totalmente restricto a:\" y \"Modificaciones "
 "restrictas a:\" simultaneamente. Las opciones son excluyentes!"

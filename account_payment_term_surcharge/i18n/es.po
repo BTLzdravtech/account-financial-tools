@@ -4,16 +4,14 @@
 # 
 # Translators:
 # Juan José Scarafía <scarafia.juanjose@gmail.com>, 2024
-# Gonzalo, 2024
-# feg, 2024
 # 
 msgid ""
 msgstr ""
-"Project-Id-Version: Odoo Server 17.0+e\n"
+"Project-Id-Version: Odoo Server 18.0+e\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2024-09-26 12:50+0000\n"
-"PO-Revision-Date: 2024-04-08 13:03+0000\n"
-"Last-Translator: feg, 2024\n"
+"POT-Creation-Date: 2025-03-12 14:24+0000\n"
+"PO-Revision-Date: 2024-12-13 13:14+0000\n"
+"Last-Translator: Juan José Scarafía <scarafia.juanjose@gmail.com>, 2024\n"
 "Language-Team: Spanish (https://app.transifex.com/adhoc/teams/46451/es/)\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
@@ -28,9 +26,6 @@ msgid ""
 "specific.\" aria-label=\"Values set here are company-specific.\" "
 "groups=\"base.group_multi_company\" role=\"img\"/>"
 msgstr ""
-"<span class=\"fa fa-lg fa-building-o\" title=\"Values set here are company-"
-"specific.\" aria-label=\"Values set here are company-specific.\" "
-"groups=\"base.group_multi_company\" role=\"img\"/>"
 
 #. module: account_payment_term_surcharge
 #: model_terms:ir.ui.view,arch_db:account_payment_term_surcharge.res_config_settings_view_form
@@ -49,7 +44,6 @@ msgstr "<span class=\"o_form_label\">del mes</span>"
 #. module: account_payment_term_surcharge
 #: model:ir.model.fields,field_description:account_payment_term_surcharge.field_account_bank_statement_line__avoid_surcharge_invoice
 #: model:ir.model.fields,field_description:account_payment_term_surcharge.field_account_move__avoid_surcharge_invoice
-#: model:ir.model.fields,field_description:account_payment_term_surcharge.field_account_payment__avoid_surcharge_invoice
 msgid "Avoid Surcharge Invoice"
 msgstr "Evadir factura de recargo"
 
@@ -100,7 +94,6 @@ msgstr ""
 #. module: account_payment_term_surcharge
 #. odoo-python
 #: code:addons/account_payment_term_surcharge/models/account_move.py:0
-#, python-format
 msgid ""
 "Deuda Vencida al %s: %s\n"
 "Tasa de interés: %s"
@@ -137,7 +130,7 @@ msgstr ""
 #. module: account_payment_term_surcharge
 #: model:ir.model.fields,field_description:account_payment_term_surcharge.field_account_payment_term_surcharge__id
 msgid "ID"
-msgstr "ID"
+msgstr ""
 
 #. module: account_payment_term_surcharge
 #: model:ir.model,name:account_payment_term_surcharge.model_account_move
@@ -157,14 +150,12 @@ msgstr "Última actualización el"
 #. module: account_payment_term_surcharge
 #: model:ir.model.fields,field_description:account_payment_term_surcharge.field_account_bank_statement_line__next_surcharge_date
 #: model:ir.model.fields,field_description:account_payment_term_surcharge.field_account_move__next_surcharge_date
-#: model:ir.model.fields,field_description:account_payment_term_surcharge.field_account_payment__next_surcharge_date
 msgid "Next Surcharge Date"
 msgstr "Próxima fecha de recargo"
 
 #. module: account_payment_term_surcharge
 #: model:ir.model.fields,field_description:account_payment_term_surcharge.field_account_bank_statement_line__next_surcharge_percent
 #: model:ir.model.fields,field_description:account_payment_term_surcharge.field_account_move__next_surcharge_percent
-#: model:ir.model.fields,field_description:account_payment_term_surcharge.field_account_payment__next_surcharge_percent
 msgid "Next Surcharge Percent"
 msgstr "Próximo porcentaje de recargo"
 
@@ -212,7 +203,6 @@ msgstr "Recargos por condiciones de pago"
 #. module: account_payment_term_surcharge
 #. odoo-python
 #: code:addons/account_payment_term_surcharge/models/account_payment_term_surcharge.py:0
-#, python-format
 msgid "Percentages on the Payment Terms lines must be between 0 and 100."
 msgstr ""
 "Los porcentajes en las líneas de condiciones de pago deben estar entre 0 y "
@@ -234,9 +224,13 @@ msgid "Sequence"
 msgstr "Secuencia"
 
 #. module: account_payment_term_surcharge
+#: model:ir.model.fields,field_description:account_payment_term_surcharge.field_account_payment_term__show_surcharge_warning
+msgid "Show Surcharge Warning"
+msgstr ""
+
+#. module: account_payment_term_surcharge
 #. odoo-python
 #: code:addons/account_payment_term_surcharge/models/account_move.py:0
-#, python-format
 msgid ""
 "Something went wrong creating the surcharge invoice from this invoice. "
 "Please take a look on it."
@@ -263,7 +257,6 @@ msgstr "Recargos"
 #. module: account_payment_term_surcharge
 #. odoo-python
 #: code:addons/account_payment_term_surcharge/models/account_payment_term_surcharge.py:0
-#, python-format
 msgid "The day of the month used for this term must be strictly positive."
 msgstr ""
 "El día del mes utilizado para esta condición deberá ser estrictamente "
@@ -272,11 +265,17 @@ msgstr ""
 #. module: account_payment_term_surcharge
 #. odoo-python
 #: code:addons/account_payment_term_surcharge/models/account_payment_term_surcharge.py:0
-#, python-format
 msgid "The number of days used for a payment term cannot be negative."
 msgstr ""
 "El número de días utilizados para una condición de pago no puede ser "
 "negativo."
+
+#. module: account_payment_term_surcharge
+#: model_terms:ir.ui.view,arch_db:account_payment_term_surcharge.view_payment_term_form
+msgid ""
+"The selected company for this payment term does not have a surcharge product configured.\n"
+"                        Please configure the product in Settings / Accounting for the selected company or companies."
+msgstr ""
 
 #. module: account_payment_term_surcharge
 #: model:ir.model.fields,field_description:account_payment_term_surcharge.field_res_config_settings__payment_term_surcharge_invoice_auto_post
@@ -291,7 +290,6 @@ msgstr ""
 #. module: account_payment_term_surcharge
 #. odoo-python
 #: code:addons/account_payment_term_surcharge/models/account_move.py:0
-#, python-format
 msgid "We couldn't run surcharges cron job in the following invoice: %s."
 msgstr ""
 "No pudimos ejecutar el trabajo cron de recargos en la siguiente factura:%s."
