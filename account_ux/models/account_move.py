@@ -21,10 +21,13 @@ class AccountMove(models.Model):
         self.filtered(lambda x: x.state == "cancel").write({"name": "/"})
 
     def action_post(self):
-        """After validate invoice will sent an email to the partner if the related journal has mail_template_id set"""
-        res = super().action_post()
-        self.action_send_invoice_mail()
-        return res
+        if self.env.company.country_code == 'AR':
+            """After validate invoice will sent an email to the partner if the related journal has mail_template_id set"""
+            res = super().action_post()
+            self.action_send_invoice_mail()
+            return res
+        else:
+            return super().action_post()
 
     def action_send_invoice_mail(self):
         for rec in self.filtered(lambda x: x.is_invoice(include_receipts=True) and x.journal_id.mail_template_id):
@@ -65,8 +68,9 @@ class AccountMove(models.Model):
 
     @api.onchange("partner_id")
     def _onchange_partner_commercial(self):
-        if self.partner_id.user_id:
-            self.invoice_user_id = self.partner_id.user_id.id
+        if self.env.company.country_code == 'AR':
+            if self.partner_id.user_id:
+                self.invoice_user_id = self.partner_id.user_id.id
 
     def copy(self, default=None):
         res = super().copy(default=default)
@@ -129,17 +133,20 @@ class AccountMove(models.Model):
 
     @api.depends("invoice_date")
     def _compute_invoice_date_due(self):
-        """Si la factura no tiene término de pago y la misma tiene fecha de vencimiento anterior al día de hoy y la factura no tiene fecha entonces cuando se publica la factura, la fecha de vencimiento tiene que coincidir con la fecha de hoy."""
-        invoices_with_old_data_due = self.filtered(
-            lambda x: x.invoice_date
-            and not x.invoice_payment_term_id
-            and (not x.invoice_date_due or x.invoice_date_due < x.invoice_date)
-        )
-        invoices = self - invoices_with_old_data_due
-        for inv in invoices_with_old_data_due:
-            if inv.invoice_date:
-                inv.invoice_date_due = inv.invoice_date
-        return super(AccountMove, invoices)._compute_invoice_date_due()
+        if self.env.company.country_code == 'AR':
+            """Si la factura no tiene término de pago y la misma tiene fecha de vencimiento anterior al día de hoy y la factura no tiene fecha entonces cuando se publica la factura, la fecha de vencimiento tiene que coincidir con la fecha de hoy."""
+            invoices_with_old_data_due = self.filtered(
+                lambda x: x.invoice_date
+                and not x.invoice_payment_term_id
+                and (not x.invoice_date_due or x.invoice_date_due < x.invoice_date)
+            )
+            invoices = self - invoices_with_old_data_due
+            for inv in invoices_with_old_data_due:
+                if inv.invoice_date:
+                    inv.invoice_date_due = inv.invoice_date
+            return super(AccountMove, invoices)._compute_invoice_date_due()
+        else:
+            return super()._compute_invoice_date_due()
 
     @api.constrains("date", "invoice_date")
     def _check_dates_on_invoices(self):

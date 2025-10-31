@@ -19,34 +19,38 @@ class AccountJournal(models.Model):
 
     @api.constrains("currency_id")
     def check_currency(self):
-        for rec in self.filtered(lambda x: x.currency_id == x.company_id.currency_id):
-            raise ValidationError(
-                _(
-                    "Solo puede utilizar una moneda secundaria distinta a la " "moneda de la compañía (%s).",
-                    rec.company_id.currency_id.name,
+        if self.env.company.country_code == 'AR':
+            for rec in self.filtered(lambda x: x.currency_id == x.company_id.currency_id):
+                raise ValidationError(
+                    _(
+                        "Solo puede utilizar una moneda secundaria distinta a la " "moneda de la compañía (%s).",
+                        rec.company_id.currency_id.name,
+                    )
                 )
-            )
 
     def write(self, vals):
-        """We need to allow to change to False the value for restricted for hash for the journal when this value is setted."""
-        if "type" in vals:
-            for journal in self:
-                if journal.type != vals["type"] and vals["type"] not in ("bank", "cash", "credit"):
-                    has_entries = self.env["account.move.line"].search_count([("journal_id", "=", journal.id)]) > 0
-                    if has_entries:
-                        raise ValidationError(
-                            _(
-                                "You cannot change the journal type for '%s' because it already has accounting entries associated with it."
+        if self.env.company.country_code == 'AR':
+            """We need to allow to change to False the value for restricted for hash for the journal when this value is setted."""
+            if "type" in vals:
+                for journal in self:
+                    if journal.type != vals["type"] and vals["type"] not in ("bank", "cash", "credit"):
+                        has_entries = self.env["account.move.line"].search_count([("journal_id", "=", journal.id)]) > 0
+                        if has_entries:
+                            raise ValidationError(
+                                _(
+                                    "You cannot change the journal type for '%s' because it already has accounting entries associated with it."
+                                )
+                                % journal.name
                             )
-                            % journal.name
-                        )
-        if "restrict_mode_hash_table" in vals and not vals.get("restrict_mode_hash_table"):
-            restrict_mode_hash_table = vals.get("restrict_mode_hash_table")
-            vals.pop("restrict_mode_hash_table")
-            res = super().write(vals)
-            self._write({"restrict_mode_hash_table": restrict_mode_hash_table})
-            return res
-        return super().write(vals)
+            if "restrict_mode_hash_table" in vals and not vals.get("restrict_mode_hash_table"):
+                restrict_mode_hash_table = vals.get("restrict_mode_hash_table")
+                vals.pop("restrict_mode_hash_table")
+                res = super().write(vals)
+                self._write({"restrict_mode_hash_table": restrict_mode_hash_table})
+                return res
+            return super().write(vals)
+        else:
+            return super().write(vals)
 
     @api.depends("type")
     def _compute_payment_sequence(self):
