@@ -1,7 +1,7 @@
 # flake8: noqa
 import json
 import base64
-from odoo import models, api, fields, _
+from odoo import models, api, fields, _, Command
 from odoo.exceptions import UserError
 
 
@@ -48,7 +48,7 @@ class AccountMove(models.Model):
                         body="<br/><br/>".join(
                             [
                                 "<b>" + title + "</b>",
-                                _("Please check the email template associated with" " the invoice journal."),
+                                _("Please check the email template associated with the invoice journal."),
                                 "<code>" + str(error) + "</code>",
                             ]
                         ),
@@ -70,6 +70,10 @@ class AccountMove(models.Model):
 
     def copy(self, default=None):
         res = super().copy(default=default)
+        for line_to_clean in res.mapped("line_ids").filtered(lambda x: False in x.mapped("tax_ids.active")):
+            line_to_clean.tax_ids = [
+                Command.unlink(x.id) for x in line_to_clean.tax_ids.filtered(lambda x: not x.active)
+            ]
         res._onchange_partner_commercial()
         return res
 
@@ -162,21 +166,67 @@ class AccountMove(models.Model):
 
     @api.constrains("state")
     def _check_company_on_lines(self):
-        for move in self.filtered(lambda x: x.state == "posted"):
-            move_company = move.company_id
-            parent_company = move_company.parent_id
+        """Odoo con check company no protege bien los "tax_ids" (m2m) ni el account_id porque se computa con sql para no tener dolores de cabeza hacemos check de
+        ​company al postear"""
 
-            for line in move.line_ids:
-                # Si la cuenta pertenece a la compañía del move o a su padre, está ok
-                if (
-                    line.account_id
-                    and move_company.id not in line.account_id.company_ids.ids
-                    and (not parent_company or parent_company.id not in line.account_id.company_ids.ids)
-                ):
-                    raise UserError(
-                        _(
-                            "There is at least one account in the journal entry (id: %s) that belongs to a company "
-                            "different from the move’s company or its parent company."
-                        )
-                        % move.id
-                    )
+        self.filtered(lambda x: x.state == "posted").mapped("line_ids")._check_company()
+
+    @api.depends()
+    def _compute_tax_totals(self):
+        super()._compute_tax_totals()
+
+        for move in self.filtered(lambda x: x.state == "posted"):
+            base_lines, _tax_lines = move._get_rounded_base_and_tax_lines()
+
+            # Detectar si hay impuestos inactivos en las líneas de impuestos
+            inactive_trl_ids = {
+                t["tax_repartition_line_id"].id
+                for t in _tax_lines
+                if t["tax_repartition_line_id"] and not t["tax_repartition_line_id"].tax_id.active
+            }
+            if not inactive_trl_ids:
+                continue
+
+            move.tax_totals = self._replace_inactive_tax_amounts(move, _tax_lines, inactive_trl_ids)
+
+    def _replace_inactive_tax_amounts(self, move, _tax_lines, inactive_trl_ids):
+        tax_totals = move.tax_totals
+        subtotal = tax_totals["subtotals"][0]
+        tax_groups = subtotal["tax_groups"]
+
+        # 1. Acumular valores por tax_group
+        amounts_by_group = {}
+
+        for t in _tax_lines:
+            trl = t["tax_repartition_line_id"]
+            if not trl or trl.id not in inactive_trl_ids:
+                continue
+
+            group_id = trl.tax_id.tax_group_id.id
+            vals = amounts_by_group.setdefault(group_id, {"amount_currency": 0.0, "amount": 0.0})
+
+            vals["amount_currency"] += t["amount_currency"]
+            vals["amount"] += t["balance"]
+
+        if not amounts_by_group:
+            return tax_totals
+
+        # 2.Reemplazar valores en los tax_groups
+        for g in tax_groups:
+            group_id = g["id"]
+            if group_id in amounts_by_group:
+                vals = amounts_by_group[group_id]
+                g["tax_amount_currency"] = abs(vals["amount_currency"])
+                g["tax_amount"] = abs(vals["amount"])
+
+        # 3. Recalcular subtotales
+        subtotal["tax_amount_currency"] = sum(g["tax_amount_currency"] for g in tax_groups)
+        subtotal["tax_amount"] = sum(g["tax_amount"] for g in tax_groups)
+
+        # 4. Recalcular totales principales
+        tax_totals["tax_amount_currency"] = subtotal["tax_amount_currency"]
+        tax_totals["tax_amount"] = subtotal["tax_amount"]
+        tax_totals["total_amount_currency"] = tax_totals["base_amount_currency"] + subtotal["tax_amount_currency"]
+        tax_totals["total_amount"] = tax_totals["base_amount"] + subtotal["tax_amount"]
+
+        return tax_totals
