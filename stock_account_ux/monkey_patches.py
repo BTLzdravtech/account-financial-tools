@@ -1,6 +1,7 @@
 from odoo.addons.stock_account.models.account_move import AccountMove
 
 
+# TODO: Odoo BTL - this changes functionality for all companies, desired functionality must be solved without monkey patches and locked for AR
 def monkey_patches():
     # monkey patch
     def _compute_show_reset_to_draft_button(self):

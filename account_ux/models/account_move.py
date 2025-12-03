@@ -154,6 +154,7 @@ class AccountMove(models.Model):
 
     @api.constrains("date", "invoice_date")
     def _check_dates_on_invoices(self):
+        # TODO: Odoo BTL - needs to be locked on AR company
         """Prevenir que en facturas de cliente queden distintos los campos de factura/recibo y fecha (date e invoice date). Pueden quedar distintos si se modifica alguna de esas fechas a través de edición masiva por ejemplo, entonces con esta constrains queremos prevenir que eso suceda."""
         invoices_to_check = self.filtered(
             lambda x: x.date != x.invoice_date if x.is_sale_document() and x.date and x.invoice_date else False

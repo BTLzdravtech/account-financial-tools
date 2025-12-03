@@ -9,6 +9,7 @@ _logger = logging.getLogger(__name__)
 class AccountMove(models.Model):
     _inherit = "account.move"
 
+    # TODO: Odoo BTL - might kill the deployment, because of the computation over 1 million records
     next_surcharge_date = fields.Date(compute="_compute_next_surcharge", store=True)
     next_surcharge_percent = fields.Float(compute="_compute_next_surcharge", store=True)
     avoid_surcharge_invoice = fields.Boolean()
@@ -112,6 +113,7 @@ class AccountMove(models.Model):
 
     @api.depends("invoice_payment_term_id", "invoice_date")
     def _compute_next_surcharge(self):
+        # TODO: Odoo BTL - needs to be locked on AR company
         for rec in self:
             if rec.invoice_payment_term_id.surcharge_ids != False:
                 surcharges = []

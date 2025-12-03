@@ -16,6 +16,7 @@ class AccountPaymentTerm(models.Model):
     @api.depends("company_id", "surcharge_ids")
     def _compute_surcharge_product(self):
         """Check if the surcharge product needs to be updated for the given company context."""
+        # TODO: Odoo BTL - needs to be locked on AR company
         for rec in self:
             if rec.surcharge_ids:
                 if rec.company_id:  # Verificar para una compañía específica

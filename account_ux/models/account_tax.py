@@ -7,6 +7,7 @@ class AccountTax(models.Model):
 
     @api.constrains("amount_type", "price_include_override", "include_base_amount", "is_base_affected", "amount")
     def _check_company_matches_active_company(self):
+        # TODO: Odoo BTL - needs to be locked on AR company
         for tax in self:
             has_move_lines = self.env["account.move.line"].sudo().search([("tax_ids", "in", tax.ids)], limit=1)
             if has_move_lines:

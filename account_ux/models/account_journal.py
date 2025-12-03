@@ -54,6 +54,7 @@ class AccountJournal(models.Model):
 
     @api.depends("type")
     def _compute_payment_sequence(self):
+        # TODO: Odoo BTL - needs to be locked on AR company
         # Por defecto lo ponemos en False para evitar errores en la secuencia
         super()._compute_payment_sequence()
         for journal in self:
