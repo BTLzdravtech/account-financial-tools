@@ -179,6 +179,7 @@ class AccountMove(models.Model):
 
         self.filtered(lambda x: x.state == "posted").mapped("line_ids")._check_company()
 
+    # TODO: Odoo BTL - please add parameters to the depends()
     @api.depends()
     def _compute_tax_totals(self):
         super()._compute_tax_totals()

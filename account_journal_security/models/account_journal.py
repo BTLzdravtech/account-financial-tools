@@ -42,6 +42,7 @@ class AccountJournal(models.Model):
         readonly=False,
     )
 
+    # TODO: Odoo BTL - please add parameters to the depends()
     @api.depends()
     def _compute_journal_restriction(self):
         for rec in self:
