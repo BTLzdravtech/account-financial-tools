@@ -154,16 +154,16 @@ class AccountMove(models.Model):
 
     @api.constrains("date", "invoice_date")
     def _check_dates_on_invoices(self):
-        # TODO: Odoo BTL - needs to be locked on AR company
-        """Prevenir que en facturas de cliente queden distintos los campos de factura/recibo y fecha (date e invoice date). Pueden quedar distintos si se modifica alguna de esas fechas a través de edición masiva por ejemplo, entonces con esta constrains queremos prevenir que eso suceda."""
-        invoices_to_check = self.filtered(
-            lambda x: x.date != x.invoice_date if x.is_sale_document() and x.date and x.invoice_date else False
-        )
-        if invoices_to_check:
-            error_msg = _("\nDate\t\t\tInvoice Date\t\tInvoice\n")
-            for rec in invoices_to_check:
-                error_msg += str(rec.date) + "\t" * 2 + str(rec.invoice_date) + "\t" * 3 + rec.display_name + "\n"
-            raise UserError(_("The date and invoice date of a sale invoice must be the same: %s") % (error_msg))
+        if self.env.company.country_code == 'AR':
+            """Prevenir que en facturas de cliente queden distintos los campos de factura/recibo y fecha (date e invoice date). Pueden quedar distintos si se modifica alguna de esas fechas a través de edición masiva por ejemplo, entonces con esta constrains queremos prevenir que eso suceda."""
+            invoices_to_check = self.filtered(
+                lambda x: x.date != x.invoice_date if x.is_sale_document() and x.date and x.invoice_date else False
+            )
+            if invoices_to_check:
+                error_msg = _("\nDate\t\t\tInvoice Date\t\tInvoice\n")
+                for rec in invoices_to_check:
+                    error_msg += str(rec.date) + "\t" * 2 + str(rec.invoice_date) + "\t" * 3 + rec.display_name + "\n"
+                raise UserError(_("The date and invoice date of a sale invoice must be the same: %s") % (error_msg))
 
     @api.depends("invoice_currency_rate")
     def _compute_inverse_invoice_currency_rate(self):
@@ -179,8 +179,7 @@ class AccountMove(models.Model):
 
         self.filtered(lambda x: x.state == "posted").mapped("line_ids")._check_company()
 
-    # TODO: Odoo BTL - please add parameters to the depends()
-    @api.depends()
+    @api.depends("state")
     def _compute_tax_totals(self):
         super()._compute_tax_totals()
 

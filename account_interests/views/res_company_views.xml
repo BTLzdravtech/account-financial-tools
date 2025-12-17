@@ -6,7 +6,6 @@
         <field name="model">res.company</field>
         <field name="inherit_id" ref="base.view_company_form"/>
         <field name="arch" type="xml">
-            <!--            TODO: Odoo BTL - add this module to the list of modules that have views locked for AR automatically -->
             <notebook position="inside">
                 <page string="Overdue Payments">
                     <separator string="Intereses Automáticos"/>

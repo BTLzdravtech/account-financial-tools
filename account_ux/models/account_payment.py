@@ -15,21 +15,21 @@ class AccountPayment(models.Model):
 
     @api.depends("invoice_ids.payment_state", "move_id.line_ids.amount_residual")
     def _compute_state(self):
-        # TODO: Odoo BTL - needs to be locked on AR company
         super()._compute_state()
-        for payment in self:
-            if (
-                not self.env.context.get("skip_payment_state_computation")
-                and payment.journal_id.type in ("bank", "cash", "credit")
-                and payment.state == "in_process"
-                and payment.outstanding_account_id
-                and len(payment.move_id.line_ids._reconciled_lines()) > 1
-                and not payment.payment_method_line_id.payment_account_id.reconcile
-            ):
-                payment.action_post()
+        if self.env.company.country_code == 'AR':
+            for payment in self:
+                if (
+                    not self.env.context.get("skip_payment_state_computation")
+                    and payment.journal_id.type in ("bank", "cash", "credit")
+                    and payment.state == "in_process"
+                    and payment.outstanding_account_id
+                    and len(payment.move_id.line_ids._reconciled_lines()) > 1
+                    and not payment.payment_method_line_id.payment_account_id.reconcile
+                ):
+                    payment.action_post()
 
     @api.ondelete(at_uninstall=False)
     def _check_payment_state(self):
-        # TODO: Odoo BTL - needs to be locked on AR company
-        if not self._context.get("force_delete") and any(m.state not in ("draft", "canceled") for m in self):
-            raise UserError(_("You cannot delete this payment, you should set it back to draft first."))
+        if self.env.company.country_code == 'AR':
+            if not self._context.get("force_delete") and any(m.state not in ("draft", "canceled") for m in self):
+                raise UserError(_("You cannot delete this payment, you should set it back to draft first."))

@@ -5,7 +5,6 @@
         <field name="model">res.partner</field>
         <field name="inherit_id" ref="base.view_res_partner_filter" />
         <field name="arch" type="xml">
-<!--            TODO: Odoo BTL - add this module to the list of modules that have views locked for AR automatically -->
             <field name="name" position="after">
                 <field name="vat"/>
             </field>

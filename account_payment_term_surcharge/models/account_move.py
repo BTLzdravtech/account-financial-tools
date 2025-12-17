@@ -113,25 +113,25 @@ class AccountMove(models.Model):
 
     @api.depends("invoice_payment_term_id", "invoice_date")
     def _compute_next_surcharge(self):
-        # TODO: Odoo BTL - needs to be locked on AR company
-        for rec in self:
-            if rec.invoice_payment_term_id.surcharge_ids != False:
-                surcharges = []
-                debit_note_dates = rec.debit_note_ids.mapped("invoice_date")
-                for surcharge in rec.invoice_payment_term_id.surcharge_ids:
-                    tentative_date = surcharge._calculate_date(rec.invoice_date)
-                    if tentative_date not in debit_note_dates:
-                        surcharges.append({"date": tentative_date, "surcharge": surcharge.surcharge})
-                surcharges.sort(key=lambda x: x["date"])
-                if len(surcharges) > 0:
-                    rec.next_surcharge_date = surcharges[0].get("date")
-                    rec.next_surcharge_percent = surcharges[0].get("surcharge")
+        if self.env.company.country_code == 'AR':
+            for rec in self:
+                if rec.invoice_payment_term_id.surcharge_ids != False:
+                    surcharges = []
+                    debit_note_dates = rec.debit_note_ids.mapped("invoice_date")
+                    for surcharge in rec.invoice_payment_term_id.surcharge_ids:
+                        tentative_date = surcharge._calculate_date(rec.invoice_date)
+                        if tentative_date not in debit_note_dates:
+                            surcharges.append({"date": tentative_date, "surcharge": surcharge.surcharge})
+                    surcharges.sort(key=lambda x: x["date"])
+                    if len(surcharges) > 0:
+                        rec.next_surcharge_date = surcharges[0].get("date")
+                        rec.next_surcharge_percent = surcharges[0].get("surcharge")
+                    else:
+                        rec.next_surcharge_date = False
+                        rec.next_surcharge_percent = False
                 else:
                     rec.next_surcharge_date = False
                     rec.next_surcharge_percent = False
-            else:
-                rec.next_surcharge_date = False
-                rec.next_surcharge_percent = False
 
     def action_post(self):
         res = super().action_post()
