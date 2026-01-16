@@ -54,10 +54,11 @@ class AccountJournal(models.Model):
 
     @api.depends("type")
     def _compute_payment_sequence(self):
-        # Por defecto lo ponemos en False para evitar errores en la secuencia
         super()._compute_payment_sequence()
-        for journal in self:
-            journal.payment_sequence = False
+        if self.env.company.country_code == 'AR':
+            # Por defecto lo ponemos en False para evitar errores en la secuencia
+            for journal in self:
+                journal.payment_sequence = False
 
     @api.model
     def _fill_missing_values(self, vals, protected_codes=False):
