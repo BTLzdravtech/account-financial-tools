@@ -9,9 +9,10 @@ _logger = logging.getLogger(__name__)
 class AccountMove(models.Model):
     _inherit = "account.move"
 
-    # TODO: Odoo BTL - might kill the deployment, because of the computation over 1 million records
-    next_surcharge_date = fields.Date(compute="_compute_next_surcharge", store=True)
-    next_surcharge_percent = fields.Float(compute="_compute_next_surcharge", store=True)
+    # The compute methods for next_surcharge_date, next_surcharge_percent must
+    # run for all account move after update
+    next_surcharge_date = fields.Date()
+    next_surcharge_percent = fields.Float()
     avoid_surcharge_invoice = fields.Boolean()
 
     def _cron_recurring_surcharges_invoices(self, batch_size=60):
@@ -111,10 +112,12 @@ class AccountMove(models.Model):
         ]
         debit_note.write({"invoice_line_ids": line_vals, "is_move_sent": True})
 
-    @api.depends("invoice_payment_term_id", "invoice_date")
+    @api.constrains("invoice_payment_term_id", "invoice_date")
     def _compute_next_surcharge(self):
-        if self.env.company.country_code == 'AR':
-            for rec in self:
+        for rec in self:
+            rec.next_surcharge_date = False
+            rec.next_surcharge_percent = False
+            if self.env.company.country_code == 'AR':
                 if rec.invoice_payment_term_id.surcharge_ids != False:
                     surcharges = []
                     debit_note_dates = rec.debit_note_ids.mapped("invoice_date")
@@ -129,9 +132,6 @@ class AccountMove(models.Model):
                     else:
                         rec.next_surcharge_date = False
                         rec.next_surcharge_percent = False
-                else:
-                    rec.next_surcharge_date = False
-                    rec.next_surcharge_percent = False
 
     def action_post(self):
         res = super().action_post()
