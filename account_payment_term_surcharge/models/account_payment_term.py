@@ -31,3 +31,6 @@ class AccountPaymentTerm(models.Model):
                         )
                 else:
                     rec.show_surcharge_warning = True
+        else:
+            for rec in self:
+                rec.show_surcharge_warning = False
