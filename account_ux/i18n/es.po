@@ -95,12 +95,12 @@ msgid "Amount untaxed"
 msgstr "Monto sin impuestos"
 
 #. module: account_ux
-#: model:ir.model.fields,field_description:account_ux.field_account_invoice_report__price_average
+#: model:ir.model.fields,field_description:account_ux.field_account_invoice_report__company_price_average
 msgid "Average Price (CC)"
 msgstr "Precio promedio"
 
 #. module: account_ux
-#: model:ir.model.fields,help:account_ux.field_account_invoice_report__price_average
+#: model:ir.model.fields,help:account_ux.field_account_invoice_report__company_price_average
 msgid "Average Price in the company's currency where it is set"
 msgstr "Precio Promedio en moneda de la compañía"
 
@@ -374,12 +374,12 @@ msgid "Last Updated on"
 msgstr "Última actualización el"
 
 #. module: account_ux
-#: model:ir.model.fields,field_description:account_ux.field_account_invoice_report__price_margin
+#: model:ir.model.fields,field_description:account_ux.field_account_invoice_report__company_price_margin
 msgid "Margin (CC)"
 msgstr "Margen"
 
 #. module: account_ux
-#: model:ir.model.fields,help:account_ux.field_account_invoice_report__price_margin
+#: model:ir.model.fields,help:account_ux.field_account_invoice_report__company_price_margin
 msgid "Margin in the company's currency where it is set"
 msgstr ""
 
@@ -554,7 +554,7 @@ msgstr ""
 "tasa de cambio."
 
 #. module: account_ux
-#: model:ir.model.fields,field_description:account_ux.field_account_invoice_report__price_total
+#: model:ir.model.fields,field_description:account_ux.field_account_invoice_report__company_price_total
 #: model:ir.ui.menu,name:account_ux.menu_full_reconciliations
 #: model_terms:ir.ui.view,arch_db:account_ux.view_account_invoice_line_report_tree
 #: model_terms:ir.ui.view,arch_db:account_ux.view_account_invoice_tree
@@ -577,17 +577,17 @@ msgid "Unit Price"
 msgstr "Precio Unitario"
 
 #. module: account_ux
-#: model:ir.model.fields,field_description:account_ux.field_account_invoice_report__price_subtotal_currency
+#: model:ir.model.fields,field_description:account_ux.field_account_invoice_report__company_price_subtotal_currency
 msgid "Untaxed Amount in Currency"
 msgstr "Base imponible en la moneda"
 
 #. module: account_ux
-#: model:ir.model.fields,field_description:account_ux.field_account_invoice_report__price_subtotal
+#: model:ir.model.fields,field_description:account_ux.field_account_invoice_report__company_price_subtotal
 msgid "Untaxed Total (CC)"
 msgstr "Base imponible"
 
 #. module: account_ux
-#: model:ir.model.fields,help:account_ux.field_account_invoice_report__price_subtotal
+#: model:ir.model.fields,help:account_ux.field_account_invoice_report__company_price_subtotal
 #: model:ir.model.fields,help:account_ux.field_account_invoice_report__total_cc
 msgid "Untaxed Total in the company's currency where it is set"
 msgstr "Total sin impuestos en moneda de la compañía"
