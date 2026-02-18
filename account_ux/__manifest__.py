@@ -19,7 +19,7 @@
 ##############################################################################
 {
     "name": "Account UX",
-    "version": "18.0.1.24.1",
+    "version": "18.0.1.24.2",
     "category": "Accounting",
     "sequence": 14,
     "summary": "",
@@ -32,6 +32,7 @@
         "sale",
         "base_vat",
         "account_debit_note",
+        "web"
     ],
     "data": [
         "security/account_ux_security.xml",
@@ -53,6 +54,11 @@
         "views/account_tax_view.xml",
         "reports/account_invoice_report_view.xml",
     ],
+    "assets": {
+        "web.assets_backend_lazy": [
+            "account_ux/static/src/js/measure_filter.js",
+        ],
+    },
     "demo": [],
     "installable": True,
     # lo hacemos auto install porque este repo no lo podemos agregar en otros
