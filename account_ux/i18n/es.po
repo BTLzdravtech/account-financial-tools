@@ -163,7 +163,7 @@ msgid "Config Settings"
 msgstr "Ajustes de configuración"
 
 #. module: account_ux
-#: model:ir.model.fields,field_description:account_ux.field_account_move_line__user_id
+#: model:ir.model.fields,field_description:account_ux.field_account_move_line__partner_user_id
 #: model_terms:ir.ui.view,arch_db:account_ux.view_account_move_line_filter
 msgid "Contact Salesperson"
 msgstr "Contactar al Vendedor"
@@ -445,7 +445,7 @@ msgid "Restrict Change Invoice Currency Exchange"
 msgstr "Restringir el Cambio de la Moneda de la Factura"
 
 #. module: account_ux
-#: model:ir.model.fields,help:account_ux.field_account_move_line__user_id
+#: model:ir.model.fields,help:account_ux.field_account_move_line__partner_user_id
 msgid "Salesperson of contact related to this journal item"
 msgstr "Vendedor del contacto relacionado con este apunte contable"
 
