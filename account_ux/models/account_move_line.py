@@ -8,7 +8,7 @@ from odoo import models, fields, api
 class AccountMoveLine(models.Model):
     _inherit = "account.move.line"
 
-    user_id = fields.Many2one(
+    partner_user_id = fields.Many2one(
         string="Contact Salesperson",
         related="partner_id.user_id",
         store=True,
