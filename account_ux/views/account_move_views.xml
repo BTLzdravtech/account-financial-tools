@@ -79,11 +79,14 @@
                 <attribute name="class">w-50</attribute>
             </xpath>
 
-            <!-- TODO que si alguna localizacion lo solicita al reves tenemos que analizar de hacerlo parametrizable o hardcodeado por país o algo así. -->
-            <xpath expr="//div[@name='currency_conversion_div']" position="replace">
-                <div name="currency_conversion_div"
+            <xpath expr="//div[@name='currency_conversion_div']" position="attributes">
+                <attribute name="invisible" separator="or" add="country_code == 'AR'"/>
+            </xpath>
+
+            <xpath expr="//div[@name='currency_conversion_div']" position="after">
+                <div name="ar_currency_conversion_div"
                     class="d-flex text-muted float-start"
-                    invisible="currency_id == company_currency_id">
+                    invisible="country_code != 'AR' or currency_id == company_currency_id">
                     <span>1.00 </span>
                     <field name="currency_id" readonly="True" options="{'no_open': True}"/>
                     <span> = </span>
@@ -91,6 +94,7 @@
                     <span invisible="inverse_invoice_currency_rate != 1.0">1.00</span>
                     <span> </span>
                     <field name="company_currency_id" readonly="True" options="{'no_open': True}"/>
+                    <button name="%(action_account_move_change_rate)d" type="action" icon="fa-pencil" class="btn-link" invisible="not invoice_date or state != 'draft' or currency_id == company_currency_id" title="Edit Rate"/>
                 </div>
             </xpath>
 
@@ -103,10 +107,6 @@
             <xpath expr="//div[@name='currency_div']//div//field[@name='currency_id']" position="after">
                 <button name="%(action_account_change_currency)d" type="action" invisible="state != 'draft'" icon="fa-exchange" class="btn-link" title="Change Currency and Rate" groups="base.group_multi_currency"/>
             </xpath>
-
-            <div name="currency_conversion_div">
-                <button name="%(action_account_move_change_rate)d" type="action" icon="fa-pencil" class="btn-link" invisible="not invoice_date or state != 'draft' or currency_id == company_currency_id" title="Edit Rate"/>
-            </div>
 
         </field>
     </record>
