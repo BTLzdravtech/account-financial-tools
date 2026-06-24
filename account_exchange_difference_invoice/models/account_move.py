@@ -26,7 +26,10 @@ class AccountMove(models.Model):
             and self.env.company.exchange_difference_product.id in x.line_ids.mapped("product_id").ids
         )
         if exchange_invoice:
-            results["special_mode"] = "total_included"
+            if self.move_type in ['out_refund', 'in_refund']:
+                results["special_mode"] = "total_included"
+            elif self.move_type in ['out_invoice', 'in_invoice']:
+                results["special_mode"] = "total_excluded"
         return results
 
     def action_post(self):
