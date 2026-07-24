@@ -17,11 +17,22 @@ class ExchangeDifferenceWizard(models.TransientModel):
         domain=[("type", "=", "sale")],
         check_company=True,
     )
+    fiscal_position = fields.Selection(
+        [("automatic", "Automatic"), ("manual", "Manual")],
+        default="automatic",
+        string="Fiscal Position Mode",
+        required=True,
+        help="If automatic, fiscal position will be auto detected for each customer, if manual you can force one or none fiscal position.",
+    )
+    fiscal_position_id = fields.Many2one(
+        "account.fiscal.position",
+        string="Fiscal Position",
+        help="Fiscal position to use for all the customers.",
+    )
 
     @api.model
     def default_get(self, fields):
         res = super().default_get(fields)
-
         if not self.env.company.exchange_difference_product:
             raise UserError(
                 _(
@@ -36,7 +47,10 @@ class ExchangeDifferenceWizard(models.TransientModel):
                 # Recuperamos las líneas de movimiento
                 # por ahora directamente filtramos los que ya se procesaron
                 move_lines = self.env["account.move.line"].search(
-                    [("move_id.exchange_reversal_id", "=", False), ("move_id.exchange_reversed_move_ids", "=", False)]
+                    [
+                        ("move_id.exchange_reversal_id", "=", False),
+                        ("move_id.exchange_reversed_move_ids", "=", False),
+                    ]
                     + [("id", "in", move_line_ids)]
                 )
 
@@ -110,9 +124,12 @@ class ExchangeDifferenceWizardLine(models.TransientModel):
             )
 
             exch_moves = partner_to_moves.get(rec.partner_id.id, self.env["account.move"])
+
             exch_moves.write({"exchange_reversal_id": move.id})
 
             move.action_post()
+
+            invoice_vals = rec._prepare_debit_credit_note(exch_moves, journal, rec_account)
 
             if rec.balance == 0.0:
                 continue
@@ -120,10 +137,10 @@ class ExchangeDifferenceWizardLine(models.TransientModel):
             debit_credit_note = (
                 self.env["account.move"]
                 .with_context(exchange_diff_account_receivable_id=rec_account.id)
-                .create(rec._prepare_debit_credit_note(journal=journal))
+                .create(invoice_vals)
             )
             if debit_credit_note.currency_id.round(debit_credit_note.amount_total) < 0:
-                # switch to credit note if the amount is negative
+                # switch to credit note if the final total is negative
                 debit_credit_note.action_switch_move_type()
 
             # estamos dejando el link por ahora solo para facilitar el computado del campo que agregamos en account.move.line
@@ -221,15 +238,143 @@ class ExchangeDifferenceWizardLine(models.TransientModel):
 
         return rec_account
 
-    def _prepare_debit_credit_note(self, journal):
+    def _prepare_invoice_lines_by_taxes(self, invoice_lines, account, amount):
+        """
+        Agrupa las líneas de factura por combinación de impuestos y prorratea el balance.
+        Retorna una lista de tuplas (0, 0, vals) para crear las líneas de la nota de débito/crédito.
+        """
+        self.ensure_one()
+
+        product = self.env.company.exchange_difference_product
+        partner = self.partner_id
+
+        # Si no hay líneas de factura, retornamos una única línea con el balance total
+        if not invoice_lines:
+            return [
+                (
+                    0,
+                    0,
+                    {
+                        "account_id": account.id,
+                        "quantity": 1.0,
+                        "price_unit": self.balance,
+                        "partner_id": partner.id,
+                        "product_id": product.id,
+                    },
+                )
+            ]
+
+        # En contexto de localización argentina, filtramos los impuestos que no son IVA
+        # (aquellos cuyo tax_group_id no tiene l10n_ar_vat_afip_code seteado)
+        is_argentina = self.env["account.tax.group"]._fields.get("l10n_ar_vat_afip_code")
+
+        tax_groups = {}
+        for line in invoice_lines:
+            if is_argentina:
+                # Solo consideramos impuestos de IVA (con l10n_ar_vat_afip_code seteado)
+                taxes = line.tax_ids.filtered("tax_group_id.l10n_ar_vat_afip_code")
+                other_taxes = line.tax_ids - taxes
+            else:
+                taxes = line.tax_ids
+            tax_key = frozenset(taxes.ids)
+            if tax_key not in tax_groups:
+                tax_groups[tax_key] = {
+                    "tax_ids": taxes,
+                    "subtotal": 0.0,
+                }
+            if not self.wizard_id.fiscal_position_id:
+                tax_groups[tax_key]["subtotal"] += line.price_total
+            else:
+                tax_groups[tax_key]["subtotal"] += line.price_total - sum(other_taxes.mapped("amount"))
+
+        # Calcular el total de subtotales para el prorrateo
+        total_subtotal = sum(group["subtotal"] for group in tax_groups.values())
+        # total_subtotal = sum(invoice_lines.mapped("price_total"))
+
+        # Si el total es cero, distribuimos equitativamente
+        if total_subtotal == 0:
+            return [
+                (
+                    0,
+                    0,
+                    {
+                        "account_id": account.id,
+                        "quantity": 1.0,
+                        "price_unit": amount,
+                        "partner_id": partner.id,
+                        "product_id": product.id,
+                    },
+                )
+            ]
+
+        # Crear las líneas prorrateadas
+        invoice_line_vals = []
+        remaining_balance = amount
+        groups_list = list(tax_groups.values())
+
+        for i, group in enumerate(groups_list):
+            if i == len(groups_list) - 1:
+                # Última línea: usar el saldo restante para evitar diferencias de redondeo
+                price_unit = remaining_balance
+            else:
+                # Prorratear según el peso del subtotal
+                proportion = group["subtotal"] / total_subtotal
+                price_unit = self.wizard_id.company_id.currency_id.round(amount * proportion)
+                remaining_balance -= price_unit
+
+            invoice_line_vals.append(
+                (
+                    0,
+                    0,
+                    {
+                        "account_id": account.id,
+                        "quantity": 1.0,
+                        "price_unit": price_unit,
+                        "partner_id": partner.id,
+                        "product_id": product.id,
+                        "tax_ids": [(6, 0, group["tax_ids"].ids)],
+                    },
+                )
+            )
+
+        return invoice_line_vals
+
+    def _prepare_debit_credit_note(self, exch_moves, journal, rec_account):
         """
         Retorna un diccionario con los datos para crear la nota de débito/crédito
+        Prorratea el balance entre las diferentes combinaciones de impuestos presentes en las líneas de factura
         """
         self.ensure_one()
 
         company = self.wizard_id.company_id
         partner = self.partner_id
         account = self.env["account.move.line"]._get_exchange_account(company, self.balance)
+
+        # approach si hacemos una sola linea
+        # partial_reconciles = self.env["account.partial.reconcile"].search(
+        #     [("exchange_move_id", "in", exch_moves.ids)]
+        # )
+        # invoice_lines = (partial_reconciles.mapped("debit_move_id") + partial_reconciles.mapped("credit_move_id")).mapped("move_id").filtered(lambda move: move.is_sale_document()).mapped("invoice_line_ids")
+        # invoice_line_vals = self._prepare_invoice_lines_by_taxes(invoice_lines, account, self.balance)
+
+        # en este approach iteramos sobre cada exhcange diff y generamos lineas para cada grupo de impuestos
+        invoice_line_vals = []
+        for exchange_move in exch_moves:
+            partial_reconcile = self.env["account.partial.reconcile"].search(
+                [("exchange_move_id", "=", exchange_move.ids)]
+            )
+            invoice_lines = (
+                (partial_reconcile.debit_move_id + partial_reconcile.credit_move_id)
+                .mapped("move_id")
+                .filtered(lambda move: move.is_sale_document())
+                .mapped("invoice_line_ids")
+            )
+            # Get balance from receivable account line - this preserves the sign
+            exchange_balance = sum(
+                exchange_move.line_ids.filtered(lambda l: l.account_id == rec_account).mapped("balance")
+            )
+            invoice_line_vals += self._prepare_invoice_lines_by_taxes(invoice_lines, account, exchange_balance)
+
         invoice_vals = {
             "move_type": "out_invoice",
             "currency_id": company.currency_id.id,
@@ -239,20 +384,14 @@ class ExchangeDifferenceWizardLine(models.TransientModel):
             "journal_id": journal.id,
             "invoice_origin": "Ajuste por diferencia de cambio",
             "invoice_payment_term_id": False,
-            "invoice_line_ids": [
-                (
-                    0,
-                    0,
-                    {
-                        "account_id": account.id,
-                        "quantity": 1.0,
-                        "price_unit": self.balance,
-                        "partner_id": partner.id,
-                        "product_id": self.env.company.exchange_difference_product.id,
-                    },
-                )
-            ],
+            "invoice_line_ids": invoice_line_vals,
         }
+
+        if self.wizard_id.fiscal_position == "manual":
+            if self.wizard_id.fiscal_position_id:
+                invoice_vals["fiscal_position_id"] = self.wizard_id.fiscal_position_id.id
+            else:
+                invoice_vals["fiscal_position_id"] = False
 
         # hack para evitar modulo glue con l10n_latam_document
         # hasta el momento tenemos feedback de dos clientes uruguayos de que los ajustes por intereses

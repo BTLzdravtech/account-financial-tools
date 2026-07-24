@@ -22,28 +22,35 @@ class AccountMove(models.Model):
 
     def action_post(self):
         """After validate invoice will sent an email to the partner if the related journal has mail_template_id set"""
+
+        # Refresh the currency rate if no invoice date is set and the currency is different from company currency
+        for move in self:
+            if (
+                not move.invoice_date
+                and move.currency_id != move.company_id.currency_id
+                and move.is_invoice(include_receipts=True)
+            ):
+                move.refresh_invoice_currency_rate()
+
+        # Use action_post to ensure the mail is sent only when the move is posted
         res = super().action_post()
         self.action_send_invoice_mail()
         return res
 
     def action_send_invoice_mail(self):
+        move_send = self.env["account.move.send"]
         for rec in self.filtered(lambda x: x.is_invoice(include_receipts=True) and x.journal_id.mail_template_id):
             if rec.partner_id.email:
                 try:
-                    rec.message_post_with_source(rec.journal_id.mail_template_id, subtype_xmlid="mail.mt_comment")
+                    move_send._generate_and_send_invoices(
+                        rec,
+                        allow_raising=False,
+                        sending_methods={"email"},
+                        mail_template=rec.journal_id.mail_template_id,
+                    )
                     rec.is_move_sent = True
                 except Exception as error:
                     title = _("ERROR: Invoice was not sent via email")
-                    # message = _(
-                    #     "Invoice %s was correctly validate but was not send"
-                    #     " via email. Please review invoice chatter for more"
-                    #     " information" % rec.display_name
-                    # )
-                    # self.env.user.notify_warning(
-                    #     title=title,
-                    #     message=message,
-                    #     sticky=True,
-                    # )
                     rec.message_post(
                         body="<br/><br/>".join(
                             [
@@ -175,7 +182,7 @@ class AccountMove(models.Model):
     def _compute_tax_totals(self):
         super()._compute_tax_totals()
 
-        for move in self.filtered(lambda x: x.state == "posted"):
+        for move in self.filtered(lambda x: x.state == "posted" and x.is_invoice(include_receipts=True)):
             base_lines, _tax_lines = move._get_rounded_base_and_tax_lines()
 
             # Detectar si hay impuestos inactivos en las líneas de impuestos
@@ -230,3 +237,31 @@ class AccountMove(models.Model):
         tax_totals["total_amount"] = tax_totals["base_amount"] + subtotal["tax_amount"]
 
         return tax_totals
+
+    def button_draft(self):
+        for move in self:
+            if move.inalterable_hash and not move.journal_id.restrict_mode_hash_table:
+                move.env.cr.execute("update account_move set inalterable_hash = null where id = %s", (move.id,))
+                move.invalidate_recordset(["inalterable_hash"])
+        return super().button_draft()
+
+    @api.model
+    def _cron_account_move_send(self, job_count=10):
+        # The _render_qweb_pdf_prepare_streams method does not correctly generate individual PDF streams when the PDF outlines are missing or invalid.
+        # so we set the limit into 1 in order to ensure that each PDF is generated separately.
+        # mention here https://github.com/odoo/odoo/pull/230813
+        # TODO v20: Check if we still need this workaround.
+        job_count = 1
+        super()._cron_account_move_send(job_count=job_count)
+
+    @api.onchange("fiscal_position_id")
+    def _onchange_fiscal_position_id(self):
+        """
+        Hacemos similar a sale_ux, cambiar FP re-computa automáticamente impuestos.
+        No llamamos a action_update_fpos_values() porque hace más cosas y lo queremos matener mínimo similar a sale_ux
+        """
+        self.ensure_one()
+        lines_to_recompute = self.invoice_line_ids.filtered(
+            lambda line: line.display_type not in ("line_section", "line_note")
+        )
+        lines_to_recompute._compute_tax_ids()

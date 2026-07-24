@@ -19,7 +19,7 @@
 ##############################################################################
 {
     "name": "Account UX",
-    "version": "18.0.1.24.0",
+    "version": "18.0.1.29.0",
     "category": "Accounting",
     "sequence": 14,
     "summary": "",
@@ -61,4 +61,6 @@
     "auto_install": True,
     "application": False,
     "post_init_hook": "_change_receipt_name",
+    "post_load": "monkey_patches",
+    "uninstall_hook": "uninstall_hook",
 }
