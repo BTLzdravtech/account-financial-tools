@@ -111,6 +111,50 @@ class AccountMoveLine(models.Model):
         else:
             return super()._prepare_reconciliation_single_partial(debit_values, credit_values, shadowed_aml_values)
 
+        if reconcile_on_company_currency and "partial_values" in res:
+            if "original_currency" in credit_values:
+                credit_values["currency"] = credit_values["original_currency"]
+                rate = get_accounting_rate(credit_values)
+                res["partial_values"]["credit_amount_currency"] = credit_values["aml"].currency_id.round(
+                    res["partial_values"]["credit_amount_currency"] * rate
+                )
+                # El residual que devuelve super quedó expresado en moneda de la compañía (por el shadow de
+                # arriba). Lo reexpresamos en la moneda secundaria real a la cotización del comprobante, igual
+                # que hacemos con el partial. Si no, el residual queda con el valor en moneda de compañía pero
+                # asociado a un apunte cuya currency_id es la secundaria, y cualquier consumidor del residual
+                # (ej. el wizard de conciliación / ajuste) lo interpreta como moneda secundaria sin convertir.
+                if res.get("credit_values"):
+                    res["credit_values"]["amount_residual_currency"] = credit_values["aml"].currency_id.round(
+                        res["credit_values"]["amount_residual"] * rate
+                    )
+            if "original_currency" in debit_values:
+                debit_values["currency"] = debit_values["original_currency"]
+                rate = get_accounting_rate(debit_values)
+                res["partial_values"]["debit_amount_currency"] = debit_values["aml"].currency_id.round(
+                    res["partial_values"]["debit_amount_currency"] * rate
+                )
+                if res.get("debit_values"):
+                    res["debit_values"]["amount_residual_currency"] = debit_values["aml"].currency_id.round(
+                        res["debit_values"]["amount_residual"] * rate
+                    )
+        return res
+
+    def reconcile(self):
+        # Con reconcile_on_company_currency se concilia al TC del comprobante, así que el residuo remanente
+        # es puro redondeo y no debe generar diferencia de cambio. Propagamos no_exchange_difference a todo
+        # el reconcile porque el override del partial no alcanza la fase donde se crea el asiento.
+        # Los apuntes pueden ser de compañías distintas de un mismo grupo (ejemplo: transferencia interna
+        # entre sucursal y matriz, que odoo permite si comparten root_id), por eso no leemos los campos
+        # directo del recordset: sería un ensure_one() implícito.
+        companies = self.company_id
+        if (
+            not self.env.context.get("no_exchange_difference")
+            and companies
+            and all(companies.mapped("reconcile_on_company_currency"))
+            and not self.account_id.mapped("currency_id")
+        ):
+            self = self.with_context(no_exchange_difference=True)
+        return super().reconcile()
 
     def _compute_amount_residual(self):
         if self.env.company.country_code == 'AR':
@@ -125,7 +169,20 @@ class AccountMoveLine(models.Model):
                     x.amount_residual_currency
                 )
             )
-            need_amount_residual_currency_adjustment.amount_residual_currency = 0.0
-            need_amount_residual_currency_adjustment.reconciled = True
-        else:
-            super()._compute_amount_residual()
+        )
+        need_amount_residual_currency_adjustment.amount_residual_currency = 0.0
+        need_amount_residual_currency_adjustment.reconciled = True
+
+    def _prepare_exchange_difference_move_vals(self, amounts_list, company=None, exchange_date=None, **kwargs):
+        res = super()._prepare_exchange_difference_move_vals(
+            amounts_list, company=company, exchange_date=exchange_date, **kwargs
+        )
+
+        if not res:
+            return res
+        payment_dates = set(self.mapped("payment_id.date"))
+        if len(payment_dates) == 1:
+            res["move_values"]["date"] = payment_dates.pop()
+        elif exchange_date:
+            res["move_values"]["date"] = exchange_date
+        return res

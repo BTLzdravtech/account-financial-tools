@@ -28,20 +28,50 @@ class AccountJournal(models.Model):
                     )
                 )
 
+    @api.constrains(
+        "suspense_account_id",
+        "inbound_payment_method_line_ids",
+        "outbound_payment_method_line_ids",
+    )
+    def _check_suspense_account_not_outstanding(self):
+        """La cuenta transitoria (suspense) del diario no puede coincidir con una
+        cuenta de pagos/cobros pendientes (outstanding).
+
+        Si coinciden, el widget de conciliación bancaria nunca habilita "Validar":
+        ``bank.rec.widget._compute_state`` deja ``state='invalid'`` mientras la cuenta
+        transitoria siga presente en las líneas, y al conciliar contra un pago cuya
+        contrapartida está en esa misma cuenta, la transitoria nunca sale. El botón
+        queda gris sin mensaje que lo explique. Bloqueamos la configuración de raíz.
+
+        Se puede saltear pasando ``skip_suspense_outstanding_check`` en el contexto. Es
+        para el módulo que crea un diario en su instalación y arma sus cuentas en varios
+        pasos dentro de la misma transacción: ahí un estado intermedio puede coincidir y
+        haría fallar el install entero, mientras que la configuración final es válida. La
+        edición manual del diario nunca lleva ese contexto, así que sigue validada.
+        """
+        if self.env.context.get("skip_suspense_outstanding_check"):
+            return
+        for journal in self:
+            suspense = journal.suspense_account_id
+            if not suspense:
+                continue
+            outstanding_accounts = (
+                journal.inbound_payment_method_line_ids | journal.outbound_payment_method_line_ids
+            ).payment_account_id
+            if suspense in outstanding_accounts:
+                raise ValidationError(
+                    _(
+                        "En el diario «%(journal)s» la cuenta transitoria (%(account)s) no puede ser la "
+                        "misma que una cuenta de pagos/cobros pendientes (outstanding). Si lo son, no vas a "
+                        "poder validar las conciliaciones bancarias contra esos pagos. Configurá cuentas distintas.",
+                        journal=journal.display_name,
+                        account=suspense.display_name,
+                    )
+                )
+
     def write(self, vals):
         if self.env.company.country_code == 'AR':
             """We need to allow to change to False the value for restricted for hash for the journal when this value is setted."""
-            if "type" in vals:
-                for journal in self:
-                    if journal.type != vals["type"] and vals["type"] not in ("bank", "cash", "credit"):
-                        has_entries = self.env["account.move.line"].search_count([("journal_id", "=", journal.id)]) > 0
-                        if has_entries:
-                            raise ValidationError(
-                                _(
-                                    "You cannot change the journal type for '%s' because it already has accounting entries associated with it."
-                                )
-                                % journal.name
-                            )
             if "restrict_mode_hash_table" in vals and not vals.get("restrict_mode_hash_table"):
                 restrict_mode_hash_table = vals.get("restrict_mode_hash_table")
                 vals.pop("restrict_mode_hash_table")
