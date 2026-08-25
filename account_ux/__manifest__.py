@@ -32,6 +32,7 @@
         "sale",
         "base_vat",
         "account_debit_note",
+        "web"
     ],
     "data": [
         "security/account_ux_security.xml",
@@ -53,12 +54,17 @@
         "views/account_tax_view.xml",
         "reports/account_invoice_report_view.xml",
     ],
+    "assets": {
+        "web.assets_backend_lazy": [
+            "account_ux/static/src/js/measure_filter.js",
+        ],
+    },
     "demo": [],
     "installable": True,
     # lo hacemos auto install porque este repo no lo podemos agregar en otros
     # por build de travis (ej sipreco) y queremos que para runbot se auto
     # instale
-    "auto_install": True,
+    "auto_install": False,
     "application": False,
     "post_init_hook": "_change_receipt_name",
     "post_load": "monkey_patches",

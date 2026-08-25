@@ -15,3 +15,4 @@ from . import account_payment
 from . import account_payment_method_line
 from . import account_reconcile_model
 from . import account_tax
+from . import ir_http

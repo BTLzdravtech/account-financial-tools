@@ -21,21 +21,24 @@ class AccountMove(models.Model):
         self.filtered(lambda x: x.state == "cancel").write({"name": "/"})
 
     def action_post(self):
-        """After validate invoice will sent an email to the partner if the related journal has mail_template_id set"""
+        if self.env.company.country_code == 'AR':
+            """After validate invoice will sent an email to the partner if the related journal has mail_template_id set"""
 
-        # Refresh the currency rate if no invoice date is set and the currency is different from company currency
-        for move in self:
-            if (
-                not move.invoice_date
-                and move.currency_id != move.company_id.currency_id
-                and move.is_invoice(include_receipts=True)
-            ):
-                move.refresh_invoice_currency_rate()
+            # Refresh the currency rate if no invoice date is set and the currency is different from company currency
+            for move in self:
+                if (
+                    not move.invoice_date
+                    and move.currency_id != move.company_id.currency_id
+                    and move.is_invoice(include_receipts=True)
+                ):
+                    move.refresh_invoice_currency_rate()
 
-        # Use action_post to ensure the mail is sent only when the move is posted
-        res = super().action_post()
-        self.action_send_invoice_mail()
-        return res
+            # Use action_post to ensure the mail is sent only when the move is posted
+            res = super().action_post()
+            self.action_send_invoice_mail()
+            return res
+        else:
+            return super().action_post()
 
     def action_send_invoice_mail(self):
         move_send = self.env["account.move.send"]
@@ -72,8 +75,9 @@ class AccountMove(models.Model):
 
     @api.onchange("partner_id")
     def _onchange_partner_commercial(self):
-        if self.partner_id.user_id:
-            self.invoice_user_id = self.partner_id.user_id.id
+        if self.env.company.country_code == 'AR':
+            if self.partner_id.user_id:
+                self.invoice_user_id = self.partner_id.user_id.id
 
     def copy(self, default=None):
         res = super().copy(default=default)
@@ -140,29 +144,33 @@ class AccountMove(models.Model):
 
     @api.depends("invoice_date")
     def _compute_invoice_date_due(self):
-        """Si la factura no tiene término de pago y la misma tiene fecha de vencimiento anterior al día de hoy y la factura no tiene fecha entonces cuando se publica la factura, la fecha de vencimiento tiene que coincidir con la fecha de hoy."""
-        invoices_with_old_data_due = self.filtered(
-            lambda x: x.invoice_date
-            and not x.invoice_payment_term_id
-            and (not x.invoice_date_due or x.invoice_date_due < x.invoice_date)
-        )
-        invoices = self - invoices_with_old_data_due
-        for inv in invoices_with_old_data_due:
-            if inv.invoice_date:
-                inv.invoice_date_due = inv.invoice_date
-        return super(AccountMove, invoices)._compute_invoice_date_due()
+        if self.env.company.country_code == 'AR':
+            """Si la factura no tiene término de pago y la misma tiene fecha de vencimiento anterior al día de hoy y la factura no tiene fecha entonces cuando se publica la factura, la fecha de vencimiento tiene que coincidir con la fecha de hoy."""
+            invoices_with_old_data_due = self.filtered(
+                lambda x: x.invoice_date
+                and not x.invoice_payment_term_id
+                and (not x.invoice_date_due or x.invoice_date_due < x.invoice_date)
+            )
+            invoices = self - invoices_with_old_data_due
+            for inv in invoices_with_old_data_due:
+                if inv.invoice_date:
+                    inv.invoice_date_due = inv.invoice_date
+            return super(AccountMove, invoices)._compute_invoice_date_due()
+        else:
+            return super()._compute_invoice_date_due()
 
     @api.constrains("date", "invoice_date")
     def _check_dates_on_invoices(self):
-        """Prevenir que en facturas de cliente queden distintos los campos de factura/recibo y fecha (date e invoice date). Pueden quedar distintos si se modifica alguna de esas fechas a través de edición masiva por ejemplo, entonces con esta constrains queremos prevenir que eso suceda."""
-        invoices_to_check = self.filtered(
-            lambda x: x.date != x.invoice_date if x.is_sale_document() and x.date and x.invoice_date else False
-        )
-        if invoices_to_check:
-            error_msg = _("\nDate\t\t\tInvoice Date\t\tInvoice\n")
-            for rec in invoices_to_check:
-                error_msg += str(rec.date) + "\t" * 2 + str(rec.invoice_date) + "\t" * 3 + rec.display_name + "\n"
-            raise UserError(_("The date and invoice date of a sale invoice must be the same: %s") % (error_msg))
+        if self.env.company.country_code == 'AR':
+            """Prevenir que en facturas de cliente queden distintos los campos de factura/recibo y fecha (date e invoice date). Pueden quedar distintos si se modifica alguna de esas fechas a través de edición masiva por ejemplo, entonces con esta constrains queremos prevenir que eso suceda."""
+            invoices_to_check = self.filtered(
+                lambda x: x.date != x.invoice_date if x.is_sale_document() and x.date and x.invoice_date else False
+            )
+            if invoices_to_check:
+                error_msg = _("\nDate\t\t\tInvoice Date\t\tInvoice\n")
+                for rec in invoices_to_check:
+                    error_msg += str(rec.date) + "\t" * 2 + str(rec.invoice_date) + "\t" * 3 + rec.display_name + "\n"
+                raise UserError(_("The date and invoice date of a sale invoice must be the same: %s") % (error_msg))
 
     @api.depends("invoice_currency_rate")
     def _compute_inverse_invoice_currency_rate(self):
@@ -178,7 +186,7 @@ class AccountMove(models.Model):
 
         self.filtered(lambda x: x.state == "posted").mapped("line_ids")._check_company()
 
-    @api.depends()
+    @api.depends("state")
     def _compute_tax_totals(self):
         super()._compute_tax_totals()
 

@@ -19,13 +19,14 @@ class AccountJournal(models.Model):
 
     @api.constrains("currency_id")
     def check_currency(self):
-        for rec in self.filtered(lambda x: x.currency_id == x.company_id.currency_id):
-            raise ValidationError(
-                _(
-                    "Solo puede utilizar una moneda secundaria distinta a la " "moneda de la compañía (%s).",
-                    rec.company_id.currency_id.name,
+        if self.env.company.country_code == 'AR':
+            for rec in self.filtered(lambda x: x.currency_id == x.company_id.currency_id):
+                raise ValidationError(
+                    _(
+                        "Solo puede utilizar una moneda secundaria distinta a la " "moneda de la compañía (%s).",
+                        rec.company_id.currency_id.name,
+                    )
                 )
-            )
 
     @api.constrains(
         "suspense_account_id",
@@ -69,21 +70,25 @@ class AccountJournal(models.Model):
                 )
 
     def write(self, vals):
-        """We need to allow to change to False the value for restricted for hash for the journal when this value is setted."""
-        if "restrict_mode_hash_table" in vals and not vals.get("restrict_mode_hash_table"):
-            restrict_mode_hash_table = vals.get("restrict_mode_hash_table")
-            vals.pop("restrict_mode_hash_table")
-            res = super().write(vals)
-            self._write({"restrict_mode_hash_table": restrict_mode_hash_table})
-            return res
-        return super().write(vals)
+        if self.env.company.country_code == 'AR':
+            """We need to allow to change to False the value for restricted for hash for the journal when this value is setted."""
+            if "restrict_mode_hash_table" in vals and not vals.get("restrict_mode_hash_table"):
+                restrict_mode_hash_table = vals.get("restrict_mode_hash_table")
+                vals.pop("restrict_mode_hash_table")
+                res = super().write(vals)
+                self._write({"restrict_mode_hash_table": restrict_mode_hash_table})
+                return res
+            return super().write(vals)
+        else:
+            return super().write(vals)
 
     @api.depends("type")
     def _compute_payment_sequence(self):
-        # Por defecto lo ponemos en False para evitar errores en la secuencia
         super()._compute_payment_sequence()
-        for journal in self:
-            journal.payment_sequence = False
+        if self.env.company.country_code == 'AR':
+            # Por defecto lo ponemos en False para evitar errores en la secuencia
+            for journal in self:
+                journal.payment_sequence = False
 
     @api.model
     def _fill_missing_values(self, vals, protected_codes=False):
