@@ -21,12 +21,14 @@ class AccountMove(models.Model):
     def _prepare_product_base_line_for_taxes_computation(self, product_line):
         # EXTENDS 'account'
         results = super()._prepare_product_base_line_for_taxes_computation(product_line)
-        exchange_invoice = self.filtered(
-            lambda x: x.line_ids.mapped("product_id")
-            and self.env.company.exchange_difference_product.id in x.line_ids.mapped("product_id").ids
-        )
-        if exchange_invoice:
-            results["special_mode"] = "total_included"
+
+        if self.company_id.country_id.code == "AR":
+            exchange_invoice = self.filtered(
+                lambda x: x.line_ids.mapped("product_id")
+                and self.env.company.exchange_difference_product.id in x.line_ids.mapped("product_id").ids
+            )
+            if exchange_invoice:
+                results["special_mode"] = "total_included"
         return results
 
     def action_post(self):
