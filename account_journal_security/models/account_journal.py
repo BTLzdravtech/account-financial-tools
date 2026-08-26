@@ -131,13 +131,13 @@ class AccountJournal(models.Model):
         Al cambiar una opción por otra, limpiar el campo M2M
         que se oculta para evitar conflictos al guardar.
         """
-        if self.journal_restriction == "modification":
+        if self.journal_restriction == "modification" and self.user_ids:
             self.modification_user_ids = self.user_ids
             self.user_ids = None
-        elif self.journal_restriction == "total":
+        elif self.journal_restriction == "total" and self.modification_user_ids:
             self.user_ids = self.modification_user_ids
             self.modification_user_ids = None
-        else:
+        elif self.journal_restriction == "none":
             # Es necesario que se limpien ambos campos cuando se seleccione
             # "Ninguna", sino no se guardan los cambios.
             self.user_ids = None
