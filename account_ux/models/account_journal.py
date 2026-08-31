@@ -42,18 +42,28 @@ class AccountJournal(models.Model):
         for journal in self:
             journal.has_child_companies = bool(journal.company_id.child_ids)
 
-    @api.depends("company_id", "company_id.child_ids", "company_id.parent_id")
+    @api.depends(
+        "company_id",
+        "company_id.child_ids",
+        "company_id.child_ids.active",
+        "company_id.parent_id",
+    )
     def _compute_branch_order(self):
         for journal in self:
+            # Only active children count: an archived branch must not keep its
+            # parent in the "parent company" tier. We filter on active instead of
+            # relying on active_test because this field is stored, so its value
+            # cannot depend on the context of whoever triggers the recompute.
+            children = journal.company_id.child_ids.filtered("active")
             # Calculate the leves of the child hierarchy
             level = 0
-            companies_to_check = journal.company_id.child_ids
+            companies_to_check = children
             while companies_to_check:
                 level += 10
                 # Get all children of the next level
-                companies_to_check = companies_to_check.mapped("child_ids")
+                companies_to_check = companies_to_check.mapped("child_ids").filtered("active")
 
-            if journal.company_id.child_ids:
+            if children:
                 # If it has children, the base value is 100 plus level
                 journal.branch_order = 100 + level
             elif journal.company_id.parent_id:
@@ -108,7 +118,15 @@ class AccountJournal(models.Model):
         transitoria siga presente en las líneas, y al conciliar contra un pago cuya
         contrapartida está en esa misma cuenta, la transitoria nunca sale. El botón
         queda gris sin mensaje que lo explique. Bloqueamos la configuración de raíz.
+
+        Se puede saltear pasando ``skip_suspense_outstanding_check`` en el contexto. Es
+        para el módulo que crea un diario en su instalación y arma sus cuentas en varios
+        pasos dentro de la misma transacción: ahí un estado intermedio puede coincidir y
+        haría fallar el install entero, mientras que la configuración final es válida. La
+        edición manual del diario nunca lleva ese contexto, así que sigue validada.
         """
+        if self.env.context.get("skip_suspense_outstanding_check"):
+            return
         for journal in self:
             suspense = journal.suspense_account_id
             if not suspense:
