@@ -1,6 +1,10 @@
 import logging
 
-from odoo.upgrade import util
+# BTL: ``odoo.upgrade.util`` is only importable when Odoo runs with ``--upgrade-path``
+# (it lives in the separate odoo/upgrade-util repo, not in odoo core). A plain
+# ``odoo-bin -u`` branch build has no such path, so the import raised ImportError and
+# aborted the whole registry load. openupgradelib provides the same two helpers with
+# identical signatures. TODO: Upgrade 19.0 - revert if upgrade-util is ever vendored.
 from openupgradelib import openupgrade
 
 _logger = logging.getLogger(__name__)
@@ -19,7 +23,7 @@ def migrate(env, version):
 
     _logger.info("Running 'stock_account_ux' post-migration for version %s", version)
 
-    if not util.table_exists(env.cr, BACKUP_TABLE):
+    if not openupgrade.table_exists(env.cr, BACKUP_TABLE):
         _logger.warning(
             "No existe la tabla backup %s: no se reenganchó el asiento histórico "
             "a stock.move. Revisar el riesgo de doble valorización en el cierre "
@@ -39,7 +43,7 @@ def migrate(env, version):
     # Con eso ``related_account_move_id`` (stock_account_ux) vuelve a apuntar al
     # asiento que valoró el movimiento y el cierre periódico deja de re-valorizar
     # esos movimientos, evitando la doble contabilización.
-    if not util.column_exists(env.cr, "stock_move", "account_move_id"):
+    if not openupgrade.column_exists(env.cr, "stock_move", "account_move_id"):
         _logger.warning("stock_move.account_move_id no existe; se omite el reenganche del " "asiento histórico.")
         return
 
