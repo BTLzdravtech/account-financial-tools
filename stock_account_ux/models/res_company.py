@@ -57,6 +57,8 @@ class ResCompany(models.Model):
         each partial closing on its own is an approximation of that portion.
         """
         self.ensure_one()
+        if self.country_code != "AR":
+            return super().action_close_stock_valuation(at_date=at_date, auto_post=auto_post)
         report = self.env["stock_account.stock.valuation.report"]
         line_types = report._normalize_line_types(line_types)
         if line_types:
@@ -115,6 +117,10 @@ class ResCompany(models.Model):
         ``_split_valuation_vals_by_product``), and leaves each product booked at its
         inventory value.
         """
+        if self.country_code != "AR":
+            return super()._get_stock_valuation_account_vals(
+                accounts_by_product, at_date=at_date, extra_aml_vals_list=extra_aml_vals_list
+            )
         vals_list = super()._get_stock_valuation_account_vals(
             accounts_by_product, at_date=at_date, extra_aml_vals_list=extra_aml_vals_list
         )
@@ -507,6 +513,8 @@ class ResCompany(models.Model):
         (``SPLIT_BY_PRODUCT_CTX``): the entry is WRITTEN here, and the standard would
         leave it aggregated per account with no product.
         """
+        if self.country_code != "AR":
+            return super()._action_close_stock_valuation(at_date=at_date)
         self = self.with_context(**{SPLIT_BY_PRODUCT_CTX: True})
         if self.env.context.get(CLOSING_LINE_TYPES_CTX):
             return self._get_line_type_closing_vals(at_date)
@@ -608,6 +616,8 @@ class ResCompany(models.Model):
         with a single change, the move domains add
         ``('product_id', 'in', closing_product_ids)``. Re-sync on Odoo upgrades.
         """
+        if self.country_code != "AR":
+            return super()._get_location_valuation_vals(at_date=at_date, location_domain=location_domain)
         closing_product_ids = self.env.context.get(CLOSING_PRODUCT_CTX)
         if closing_product_ids is None:
             return super()._get_location_valuation_vals(at_date=at_date, location_domain=location_domain)

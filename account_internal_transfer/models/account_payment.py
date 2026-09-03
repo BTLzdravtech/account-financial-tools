@@ -34,7 +34,7 @@ class AccountPayment(models.Model):
     @api.depends("company_id", "is_internal_transfer")
     def _compute_destination_company_id(self):
         for rec in self:
-            if rec.is_internal_transfer:
+            if rec.country_code == "AR" and rec.is_internal_transfer:
                 rec.destination_company_id = rec.company_id
             else:
                 rec.destination_company_id = False
@@ -42,13 +42,21 @@ class AccountPayment(models.Model):
     @api.depends("destination_company_id", "journal_id")
     def _compute_destination_journal_domain(self):
         for rec in self:
-            rec.destination_journal_domain = Domain(
-                rec.env["account.journal"]._check_company_domain(rec.destination_company_id)
-            ) & Domain([("type", "in", ("bank", "cash", "credit"))])
+            if rec.country_code == "AR" and rec.is_internal_transfer:
+                rec.destination_journal_domain = Domain(
+                    rec.env["account.journal"]._check_company_domain(rec.destination_company_id)
+                ) & Domain([("type", "in", ("bank", "cash", "credit"))])
+            else:
+                rec.destination_journal_domain = Domain.FALSE
+
+    @api.constrains("company_id", "is_internal_transfer")
+    def _check_internal_transfer_country(self):
+        if self.filtered(lambda payment: payment.country_code != "AR" and payment.is_internal_transfer):
+            raise ValidationError(_("Internal transfers are only available for Argentine companies."))
 
     @api.constrains("destination_company_id", "destination_journal_id")
     def _check_journal_company(self):
-        for rec in self.filtered("destination_journal_id"):
+        for rec in self.filtered(lambda payment: payment.country_code == "AR" and payment.destination_journal_id):
             # Force recompute of the domain to ensure it's up to date
             rec._compute_destination_journal_domain()
             has_cashbox_field = "cashbox_session_id" in rec._fields
@@ -77,7 +85,7 @@ class AccountPayment(models.Model):
         Another option would be to use report_substitute module and setup a subsitution with a domain
         """
         self.ensure_one()
-        if self.is_internal_transfer:
+        if self.country_code == "AR" and self.is_internal_transfer:
             return "account_internal_transfer.report_account_transfer"
         return report_xml_id
 
@@ -86,7 +94,9 @@ class AccountPayment(models.Model):
         values = [
             (
                 key,
-                _("Internal Transfer") if self.is_internal_transfer and key == "label" else value,
+                _("Internal Transfer")
+                if self.country_code == "AR" and self.is_internal_transfer and key == "label"
+                else value,
             )
             for key, value in values
         ]
@@ -94,7 +104,7 @@ class AccountPayment(models.Model):
 
     def _get_liquidity_aml_display_name_list(self):
         res = super()._get_liquidity_aml_display_name_list()
-        if self.is_internal_transfer:
+        if self.country_code == "AR" and self.is_internal_transfer:
             if self.payment_type == "inbound":
                 return [("transfer_to", _("Transfer to %s", self.journal_id.name))]
             else:  # payment.payment_type == 'outbound':
@@ -104,16 +114,14 @@ class AccountPayment(models.Model):
     @api.depends("destination_journal_id", "is_internal_transfer")
     def _compute_available_partner_bank_ids(self):
         super()._compute_available_partner_bank_ids()
-        for pay in self:
-            if pay.is_internal_transfer:
-                pay.available_partner_bank_ids = pay.destination_journal_id.bank_account_id
+        for pay in self.filtered(lambda payment: payment.country_code == "AR" and payment.is_internal_transfer):
+            pay.available_partner_bank_ids = pay.destination_journal_id.bank_account_id
 
     @api.depends("is_internal_transfer", "destination_journal_id")
     def _compute_destination_account_id(self):
         super()._compute_destination_account_id()
-        for pay in self:
-            if pay.is_internal_transfer:
-                pay.destination_account_id = pay.destination_journal_id.company_id.transfer_account_id
+        for pay in self.filtered(lambda payment: payment.country_code == "AR" and payment.is_internal_transfer):
+            pay.destination_account_id = pay.destination_journal_id.company_id.transfer_account_id
 
     @api.model
     def _get_trigger_fields_to_synchronize(self):
@@ -147,13 +155,14 @@ class AccountPayment(models.Model):
         with opposite payment_type and swapped journal_id & destination_journal_id.
         Both payments liquidity transfer lines are then reconciled.
         """
-        if self.filtered(lambda x: x.move_id.state == "draft"):
+        payments = self.filtered(lambda payment: payment.country_code == "AR" and payment.is_internal_transfer)
+        if payments.filtered(lambda payment: payment.move_id.state == "draft"):
             raise UserError(
                 _(
                     "We couldn't create the paired payment because the journal entry of the original payment is in draft state."
                 )
             )
-        for payment in self:
+        for payment in payments:
             paired_payment = payment.copy(payment._prepare_paired_payment_values())
             # The payment method line ID in 'paired_payment' needs to be computed manually,
             # as it does not compute automatically.
@@ -194,10 +203,15 @@ class AccountPayment(models.Model):
             lines.reconcile()
 
     def action_post(self):
-        super().action_post()
+        res = super().action_post()
         self.filtered(
-            lambda pay: (pay.is_internal_transfer and not pay.paired_internal_transfer_payment_id)
+            lambda payment: (
+                payment.country_code == "AR"
+                and payment.is_internal_transfer
+                and not payment.paired_internal_transfer_payment_id
+            )
         )._create_paired_internal_transfer_payment()
+        return res
 
     def action_open_destination_journal(self):
         """Redirect the user to this destination journal.
@@ -219,7 +233,7 @@ class AccountPayment(models.Model):
     @api.depends("is_internal_transfer")
     def _compute_partner_id(self):
         super()._compute_partner_id()
-        for pay in self.filtered("is_internal_transfer"):
+        for pay in self.filtered(lambda payment: payment.country_code == "AR" and payment.is_internal_transfer):
             pay.partner_id = False
 
     def _prepare_move_line_default_vals(self, write_off_line_vals=None, force_balance=None):
@@ -230,6 +244,7 @@ class AccountPayment(models.Model):
         if (
             # This is to avoid dependency on payment_pro
             "amount_company_currency" in self._fields
+            and self.country_code == "AR"
             and self.is_internal_transfer
             # Payment journal is in company currency (either not set or explicitly set to company currency)
             and (not self.journal_id.currency_id or self.journal_id.currency_id == self.company_id.currency_id)
@@ -257,7 +272,13 @@ class AccountPayment(models.Model):
             return res
 
         # Update paired payment when amount, rate or journal changes
-        for payment in self.filtered(lambda p: p.is_internal_transfer and p.paired_internal_transfer_payment_id):
+        for payment in self.filtered(
+            lambda payment: (
+                payment.country_code == "AR"
+                and payment.is_internal_transfer
+                and payment.paired_internal_transfer_payment_id
+            )
+        ):
             paired_payment = payment.paired_internal_transfer_payment_id
             updates = {}
 
@@ -337,7 +358,8 @@ class AccountPayment(models.Model):
             return res
         paired = self.filtered(
             lambda p: (
-                p.is_internal_transfer
+                p.country_code == "AR"
+                and p.is_internal_transfer
                 and p.paired_internal_transfer_payment_id
                 and p.paired_internal_transfer_payment_id.state != "draft"
             )
@@ -352,7 +374,8 @@ class AccountPayment(models.Model):
             return res
         paired = self.filtered(
             lambda p: (
-                p.is_internal_transfer
+                p.country_code == "AR"
+                and p.is_internal_transfer
                 and p.paired_internal_transfer_payment_id
                 and p.paired_internal_transfer_payment_id.state != "canceled"
             )

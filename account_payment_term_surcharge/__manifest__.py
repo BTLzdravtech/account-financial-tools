@@ -19,7 +19,7 @@
 ##############################################################################
 {
     "name": "Surcharges on payment terms",
-    "version": "19.0.1.0.0",
+    "version": "19.0.1.0.2",
     "category": "Accounting",
     "sequence": 14,
     "summary": "Allow to add surcharges for invoices on payment terms",
@@ -29,6 +29,7 @@
     "depends": [
         "account",
         "account_debit_note",
+        "account_ux",
     ],
     "data": [
         "views/account_payment_term_view.xml",
@@ -39,5 +40,6 @@
         "data/ir_cron_data.xml",
     ],
     "installable": True,
+    "auto_install": False,
     "application": False,
 }

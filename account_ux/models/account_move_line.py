@@ -143,9 +143,9 @@ class AccountMoveLine(models.Model):
         res = super()._prepare_exchange_difference_move_vals(
             amounts_list, company=company, exchange_date=exchange_date, **kwargs
         )
-
-        if not res:
+        if not res or not self or any(line.company_id.country_code != "AR" for line in self):
             return res
+
         payment_dates = set(self.mapped("payment_id.date"))
         if len(payment_dates) == 1:
             res["move_values"]["date"] = payment_dates.pop()

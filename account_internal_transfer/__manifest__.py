@@ -19,7 +19,7 @@
 ##############################################################################
 {
     "name": "Account Internal Transfer",
-    "version": "19.0.1.4.0",
+    "version": "19.0.1.4.1",
     "category": "Accounting",
     "sequence": 14,
     "summary": "",
@@ -36,6 +36,6 @@
     ],
     "demo": [],
     "installable": True,
-    "auto_install": True,
+    "auto_install": False,
     "application": False,
 }

@@ -4,8 +4,6 @@
 ##############################################################################
 from odoo import _, api, fields, models, tools
 from odoo.exceptions import ValidationError
-from odoo.fields import Domain
-from odoo.tools.misc import unquote
 from odoo.tools.safe_eval import safe_eval
 
 
@@ -75,7 +73,7 @@ class AccountJournal(models.Model):
 
     @api.onchange("shared_to_branches")
     def _onchange_shared_to_branches(self):
-        if self.type == "sale" and self.shared_to_branches:
+        if self.company_id.country_code == "AR" and self.type == "sale" and self.shared_to_branches:
             return {
                 "warning": {
                     "title": _("Warning!"),
@@ -85,24 +83,14 @@ class AccountJournal(models.Model):
 
     @api.depends("type")
     def _compute_shared_to_branches(self):
-        shared = self.filtered(lambda j: j.type in ["general", "purchase"])
+        ar_journals = self.filtered(lambda journal: journal.company_id.country_code == "AR")
+        shared = ar_journals.filtered(lambda journal: journal.type in ["general", "purchase"])
         shared.shared_to_branches = True
-        (self - shared).shared_to_branches = False
+        (ar_journals - shared).shared_to_branches = False
+        (self - ar_journals).shared_to_branches = False
 
-        # In case of test environment (but not demo data loading), share all journals to branches
         if tools.config["test_enable"] and not self.env.context.get("demo"):
-            self.shared_to_branches = True
-
-    def _check_company_domain(self, companies) -> Domain:
-        """TODO"""
-        if isinstance(companies, unquote):
-            companies = unquote(f"{companies}")
-        else:
-            companies = models.to_record_ids(companies)
-        domain = Domain("company_id", "in", companies) | Domain(
-            [("company_id", "parent_of", companies), ("shared_to_branches", "=", True)]
-        )
-        return domain
+            ar_journals.shared_to_branches = True
 
     @api.constrains(
         "suspense_account_id",
@@ -149,24 +137,17 @@ class AccountJournal(models.Model):
     def _compute_payment_sequence(self):
         # Por defecto lo ponemos en False para evitar errores en la secuencia
         super()._compute_payment_sequence()
-        for journal in self:
+        for journal in self.filtered(lambda journal: journal.company_id.country_code == "AR"):
             journal.payment_sequence = False
 
     def _compute_show_warning_shared_to_branches(self):
         for journal in self:
             journal.show_warning_shared_to_branches = (
-                journal.type in ["sale", "purchase"] and not journal.company_id.vat and journal.l10n_latam_use_documents
+                journal.company_id.country_code == "AR"
+                and journal.type in ["sale", "purchase"]
+                and not journal.company_id.vat
+                and journal.l10n_latam_use_documents
             )
-
-    @api.model
-    def _fill_missing_values(self, vals, protected_codes=False):
-        journal_type = vals.get("type")
-        company = self.env["res.company"].browse(vals["company_id"]) if vals.get("company_id") else self.env.company
-        if journal_type == "credit":
-            if not vals.get("default_account_id"):
-                default_account_id = self._create_default_account(company, journal_type, vals)
-                vals["default_account_id"] = default_account_id
-        super()._fill_missing_values(vals, protected_codes=protected_codes)
 
     def open_invalid_statements_action(self):
         self.ensure_one()
