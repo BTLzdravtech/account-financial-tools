@@ -9,13 +9,14 @@ class AccountPayment(models.Model):
     def _onchange_available_journal_ids(self):
         """Fix the use case where a journal only suitable for one kind of operation (lets said inbound) is selected
         and then the user selects "outbound" type, the journals remains selected."""
-        if not self.journal_id or self.journal_id not in self.available_journal_ids._origin:
-            self.journal_id = self.available_journal_ids._origin[:1]
+        for payment in self.filtered(lambda pay: pay.company_id.country_code == "AR"):
+            if not payment.journal_id or payment.journal_id not in payment.available_journal_ids._origin:
+                payment.journal_id = payment.available_journal_ids._origin[:1]
 
     @api.depends("invoice_ids.payment_state", "move_id.line_ids.amount_residual")
     def _compute_state(self):
         super()._compute_state()
-        for payment in self:
+        for payment in self.filtered(lambda pay: pay.company_id.country_code == "AR"):
             if (
                 not self.env.context.get("skip_payment_state_computation")
                 and payment.journal_id.type in ("bank", "cash", "credit")
@@ -28,16 +29,34 @@ class AccountPayment(models.Model):
 
     @api.ondelete(at_uninstall=False)
     def _check_payment_state(self):
-        if not self.env.context.get("force_delete") and any(m.state not in ("draft", "canceled") for m in self):
+        payments = self.filtered(lambda pay: pay.company_id.country_code == "AR")
+        if not self.env.context.get("force_delete") and any(m.state not in ("draft", "canceled") for m in payments):
             raise UserError(_("You cannot delete this payment, you should set it back to draft first."))
 
     def _compute_available_journal_ids(self):
         super()._compute_available_journal_ids()
-        for pay in self:
-            if not pay.available_journal_ids:
+        for payment in self.filtered(lambda pay: pay.company_id.country_code == "AR"):
+            journals = self.env["account.journal"].search(
+                [
+                    "|",
+                    ("company_id", "=", payment.company_id.id),
+                    "&",
+                    ("company_id", "parent_of", payment.company_id.id),
+                    ("shared_to_branches", "=", True),
+                    ("type", "in", ("bank", "cash", "credit")),
+                ]
+            )
+            if payment.payment_type == "inbound":
+                payment.available_journal_ids = journals.filtered("inbound_payment_method_line_ids")
+            else:
+                payment.available_journal_ids = journals.filtered("outbound_payment_method_line_ids")
+            if not payment.available_journal_ids:
                 raise UserError(
                     _("No journals available for company %s and payment type %s.")
-                    % (pay.company_id.name, dict(pay._fields["payment_type"].selection).get(pay.payment_type))
+                    % (
+                        payment.company_id.name,
+                        dict(payment._fields["payment_type"].selection).get(payment.payment_type),
+                    )
                 )
 
     def action_post(self):
@@ -54,7 +73,10 @@ class AccountPayment(models.Model):
         # super(): el core fuerza state='paid' para asset_cash y ese write ya lo genera.
         missing_move = self.filtered(
             lambda pay: (
-                not pay.move_id and pay.outstanding_account_id and pay.state not in ("draft", "canceled", "rejected")
+                pay.company_id.country_code == "AR"
+                and not pay.move_id
+                and pay.outstanding_account_id
+                and pay.state not in ("draft", "canceled", "rejected")
             )
         )
         if missing_move:
@@ -63,4 +85,7 @@ class AccountPayment(models.Model):
                 payment.move_id.date = payment.date
             missing_move.move_id.filtered(lambda move: move.state == "draft").action_post()
         super().action_post()
-        self.filtered(lambda pay: pay.outstanding_account_id.account_type == "liability_credit_card").state = "paid"
+        self.filtered(
+            lambda pay: pay.company_id.country_code == "AR"
+            and pay.outstanding_account_id.account_type == "liability_credit_card"
+        ).state = "paid"

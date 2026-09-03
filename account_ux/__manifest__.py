@@ -19,7 +19,7 @@
 ##############################################################################
 {
     "name": "Account UX",
-    "version": "19.0.1.25.0",
+    "version": "19.0.1.25.1",
     "category": "Accounting",
     "sequence": 14,
     "summary": "",
@@ -57,12 +57,7 @@
     ],
     "demo": [],
     "installable": True,
-    # lo hacemos auto install porque este repo no lo podemos agregar en otros
-    # por build de travis (ej sipreco) y queremos que para runbot se auto
-    # instale
-    "auto_install": True,
+    "auto_install": False,
     "application": False,
     "post_init_hook": "_change_receipt_name",
-    "post_load": "monkey_patches",
-    "uninstall_hook": "uninstall_hook",
 }
