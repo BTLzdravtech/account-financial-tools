@@ -1,7 +1,7 @@
 import logging
 
 from odoo import Command, _, api, fields, models, tools
-from odoo.exceptions import UserError
+from odoo.exceptions import AccessError, UserError, ValidationError
 
 _logger = logging.getLogger(__name__)
 
@@ -21,11 +21,10 @@ class AccountMove(models.Model):
             ("payment_state", "in", ["not_paid", "partial"]),
             ("avoid_surcharge_invoice", "=", False),
         ]
-        _logger.info(
-            "Running Surcharges Invoices Cron Job, pendientes por procesar %s facturas" % self.search_count(domain)
-        )
-        to_create = self.search(domain)
-        to_create[:batch_size].create_surcharges_invoices()
+        to_create = self.search(domain, order="id", limit=batch_size + 1)
+        batch = to_create[:batch_size]
+        _logger.info("Running Surcharges Invoices Cron Job, processing %s invoices", len(batch))
+        batch.create_surcharges_invoices()
         if len(to_create) > batch_size:
             self.env.ref("account_payment_term_surcharge.cron_recurring_surcharges_invoices")._trigger()
 
@@ -37,10 +36,22 @@ class AccountMove(models.Model):
                 rec.create_surcharge_invoice(rec.next_surcharge_date, rec.next_surcharge_percent)
                 if not tools.config["test_enable"]:
                     rec.env.cr.commit()
-            except:
+            except (AccessError, UserError, ValidationError):
                 invoice_with_errors.append(rec.id)
                 rec.avoid_surcharge_invoice = True
-                _logger.error(f"Something went wrong creating the surcharge invoice from the invoice id:{rec.id}")
+                _logger.exception("Could not create the surcharge invoice from invoice %s", rec.id)
+                message_body = _(
+                    "Something went wrong creating the surcharge invoice from this invoice. Please take a look on it."
+                )
+                partner_ids = rec.message_partner_ids.filtered(lambda x: not x.partner_share)
+                rec.message_post(body=message_body, partner_ids=partner_ids.ids, subtype_xmlid="mail.mt_note")
+                if not tools.config["test_enable"]:
+                    rec.env.cr.commit()
+                continue
+            except Exception:
+                invoice_with_errors.append(rec.id)
+                rec.avoid_surcharge_invoice = True
+                _logger.exception("Unexpected error creating the surcharge invoice from invoice %s", rec.id)
                 message_body = _(
                     "Something went wrong creating the surcharge invoice from this invoice. Please take a look on it."
                 )

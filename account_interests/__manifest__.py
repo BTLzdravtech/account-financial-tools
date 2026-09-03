@@ -19,7 +19,7 @@
 ##############################################################################
 {
     "name": "Interests Management",
-    "version": "19.0.1.1.0",
+    "version": "19.0.1.1.1",
     "category": "Accounting",
     "sequence": 14,
     "summary": "Calculate interests for selected partners",
@@ -38,5 +38,6 @@
         "demo/res_company_interest_demo.xml",
     ],
     "installable": True,
+    "auto_install": False,
     "application": False,
 }
