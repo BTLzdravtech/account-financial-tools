@@ -132,7 +132,7 @@ class AccountMove(models.Model):
 
     def action_post(self):
         res = super().action_post()
-        self.avoid_surcharge_invoice = False
+        self.filtered(lambda move: move.country_code == "AR").avoid_surcharge_invoice = False
         return res
 
     def action_send_invoice_mail(self):
