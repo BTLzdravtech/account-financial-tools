@@ -15,11 +15,11 @@ BACKUP_TABLE = "stock_move_account_move_id_bu"
 
 @openupgrade.migrate()
 def migrate(env, version):
-    """Limpiar ``account_stock_expense_id`` en bases ya instaladas"""
-    openupgrade.logged_query(
-        env.cr,
-        "UPDATE account_account SET account_stock_expense_id = NULL WHERE account_stock_expense_id IS NOT NULL",
-    )
+    """Clear stock expense accounts only for accounts used exclusively in Argentina."""
+    accounts = env["account.account"].sudo().search([("account_stock_expense_id", "!=", False)])
+    accounts.filtered(
+        lambda account: account.company_ids and all(company.country_code == "AR" for company in account.company_ids)
+    ).write({"account_stock_expense_id": False})
 
     _logger.info("Running 'stock_account_ux' post-migration for version %s", version)
 
