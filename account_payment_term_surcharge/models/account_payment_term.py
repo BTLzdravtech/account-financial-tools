@@ -18,15 +18,14 @@ class AccountPaymentTerm(models.Model):
         """Check if the surcharge product needs to be updated for the given company context."""
         for rec in self:
             if rec.surcharge_ids:
-                if rec.company_id:  # Verificar para una compañía específica
-                    company = rec.company_id
-                    # Devuelve False si falta el producto de recargo
-                    self.show_surcharge_warning = bool(company.payment_term_surcharge_product_id)
-                else:  # Verificar todas las compañías si company_id es False
-                    all_companies = self.env["res.company"].search([])
-                    # Devuelve False si alguna compañía no tiene configurado el producto de recargo
+                if rec.company_id:
+                    rec.show_surcharge_warning = rec.company_id.country_code != "AR" or bool(
+                        rec.company_id.payment_term_surcharge_product_id
+                    )
+                else:
+                    ar_companies = self.env["res.company"].search([("country_code", "=", "AR")])
                     rec.show_surcharge_warning = all(
-                        company.payment_term_surcharge_product_id for company in all_companies
+                        company.payment_term_surcharge_product_id for company in ar_companies
                     )
             else:
                 rec.show_surcharge_warning = True

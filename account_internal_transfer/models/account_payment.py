@@ -113,15 +113,17 @@ class AccountPayment(models.Model):
 
     @api.depends("destination_journal_id", "is_internal_transfer")
     def _compute_available_partner_bank_ids(self):
-        super()._compute_available_partner_bank_ids()
+        result = super()._compute_available_partner_bank_ids()
         for pay in self.filtered(lambda payment: payment.country_code == "AR" and payment.is_internal_transfer):
             pay.available_partner_bank_ids = pay.destination_journal_id.bank_account_id
+        return result
 
     @api.depends("is_internal_transfer", "destination_journal_id")
     def _compute_destination_account_id(self):
-        super()._compute_destination_account_id()
+        result = super()._compute_destination_account_id()
         for pay in self.filtered(lambda payment: payment.country_code == "AR" and payment.is_internal_transfer):
             pay.destination_account_id = pay.destination_journal_id.company_id.transfer_account_id
+        return result
 
     @api.model
     def _get_trigger_fields_to_synchronize(self):
@@ -232,9 +234,10 @@ class AccountPayment(models.Model):
 
     @api.depends("is_internal_transfer")
     def _compute_partner_id(self):
-        super()._compute_partner_id()
+        result = super()._compute_partner_id()
         for pay in self.filtered(lambda payment: payment.country_code == "AR" and payment.is_internal_transfer):
             pay.partner_id = False
+        return result
 
     def _prepare_move_line_default_vals(self, write_off_line_vals=None, force_balance=None):
         line_vals_list = super()._prepare_move_line_default_vals(
