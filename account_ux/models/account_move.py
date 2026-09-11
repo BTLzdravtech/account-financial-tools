@@ -52,14 +52,15 @@ class AccountMove(models.Model):
         # The posting resets background_post, so we take note of the deferred ones beforehand. We
         # pass them on the context because other modules extend action_send_invoice_mail and
         # changing its signature would break them
-        deferred = self.filtered("background_post")
+        moves = self.filtered(lambda move: move.country_code == "AR")
+        deferred = moves.filtered("background_post")
         res = super().action_post()
-        self.with_context(deferred_invoice_mail_ids=deferred.ids).action_send_invoice_mail()
+        moves.with_context(deferred_invoice_mail_ids=deferred.ids).action_send_invoice_mail()
         return res
 
     def _post(self, soft=True):
         # Refresh the currency rate if no invoice date is set and the currency is different from company currency
-        for move in self:
+        for move in self.filtered(lambda move: move.country_code == "AR"):
             if not move.invoice_date and move.currency_id != move.company_id.currency_id:
                 move.refresh_invoice_currency_rate()
         return super()._post(soft=soft)
@@ -82,7 +83,10 @@ class AccountMove(models.Model):
         porque otros módulos extienden este método y cambiarle la firma los rompe.
         """
         candidates = self.filtered(
-            lambda x: x.is_sale_document(include_receipts=True) and x.journal_id.mail_template_id and not x.is_move_sent
+            lambda move: move.country_code == "AR"
+            and move.is_sale_document(include_receipts=True)
+            and move.journal_id.mail_template_id
+            and not move.is_move_sent
         )
         # Si no hay email del partner, registramos un error en el chatter
         without_email = candidates.filtered(lambda x: not x.partner_id.email)
@@ -126,22 +130,28 @@ class AccountMove(models.Model):
 
     def _get_mail_template(self):
         res = super()._get_mail_template()
-        if self.journal_id.mail_template_id and not all(move.move_type in ("out_refund", "in_refund") for move in self):
+        if (
+            self
+            and all(move.country_code == "AR" for move in self)
+            and self.journal_id.mail_template_id
+            and not all(move.move_type in ("out_refund", "in_refund") for move in self)
+        ):
             res = self.journal_id.mail_template_id
         return res
 
     @api.onchange("partner_id")
     def _onchange_partner_commercial(self):
-        if self.partner_id.user_id:
-            self.invoice_user_id = self.partner_id.user_id.id
+        for move in self.filtered(lambda move: move.country_code == "AR" and move.partner_id.user_id):
+            move.invoice_user_id = move.partner_id.user_id.id
 
     def copy(self, default=None):
         res = super().copy(default=default)
-        for line_to_clean in res.mapped("line_ids").filtered(lambda x: False in x.mapped("tax_ids.active")):
+        ar_moves = res.filtered(lambda move: move.country_code == "AR")
+        for line_to_clean in ar_moves.mapped("line_ids").filtered(lambda line: False in line.mapped("tax_ids.active")):
             line_to_clean.tax_ids = [
-                Command.unlink(x.id) for x in line_to_clean.tax_ids.filtered(lambda x: not x.active)
+                Command.unlink(tax.id) for tax in line_to_clean.tax_ids.filtered(lambda tax: not tax.active)
             ]
-        res._onchange_partner_commercial()
+        ar_moves._onchange_partner_commercial()
         return res
 
     # Sobrescribe el método de odoo en el PR https://github.com/odoo/odoo/pull/234605
@@ -201,10 +211,11 @@ class AccountMove(models.Model):
     def _compute_invoice_date_due(self):
         """Si la factura no tiene término de pago y la misma tiene fecha de vencimiento anterior al día de hoy y la factura no tiene fecha entonces cuando se publica la factura, la fecha de vencimiento tiene que coincidir con la fecha de hoy."""
         invoices_with_old_data_due = self.filtered(
-            lambda x: (
-                x.invoice_date
-                and not x.invoice_payment_term_id
-                and (not x.invoice_date_due or x.invoice_date_due < x.invoice_date)
+            lambda move: (
+                move.country_code == "AR"
+                and move.invoice_date
+                and not move.invoice_payment_term_id
+                and (not move.invoice_date_due or move.invoice_date_due < move.invoice_date)
             )
         )
         invoices = self - invoices_with_old_data_due
@@ -217,7 +228,13 @@ class AccountMove(models.Model):
     def _check_dates_on_invoices(self):
         """Prevenir que en facturas de cliente queden distintos los campos de factura/recibo y fecha (date e invoice date). Pueden quedar distintos si se modifica alguna de esas fechas a través de edición masiva por ejemplo, entonces con esta constrains queremos prevenir que eso suceda."""
         invoices_to_check = self.filtered(
-            lambda x: x.date != x.invoice_date if x.is_sale_document() and x.date and x.invoice_date else False
+            lambda move: (
+                move.country_code == "AR"
+                and move.is_sale_document()
+                and move.date
+                and move.invoice_date
+                and move.date != move.invoice_date
+            )
         )
         if invoices_to_check:
             error_msg = _("\nDate\t\t\tInvoice Date\t\tInvoice\n")
@@ -238,8 +255,9 @@ class AccountMove(models.Model):
         # so we set the limit into 1 in order to ensure that each PDF is generated separately.
         # mention here https://github.com/odoo/odoo/pull/230813
         # TODO v20: Check if we still need this workaround.
-        job_count = 1
-        super()._cron_account_move_send(job_count=job_count)
+        if self.env.company.country_code == "AR":
+            job_count = 1
+        return super()._cron_account_move_send(job_count=job_count)
 
     @api.onchange("fiscal_position_id")
     def _onchange_fiscal_position_id(self):
@@ -247,11 +265,11 @@ class AccountMove(models.Model):
         Hacemos similar a sale_ux, cambiar FP re-computa automáticamente impuestos.
         No llamamos a action_update_fpos_values() porque hace más cosas y lo queremos matener mínimo similar a sale_ux
         """
-        self.ensure_one()
-        lines_to_recompute = self.invoice_line_ids.filtered(
-            lambda line: line.display_type not in ("line_section", "line_note")
-        )
-        lines_to_recompute._compute_tax_ids()
+        for move in self.filtered(lambda move: move.country_code == "AR"):
+            lines_to_recompute = move.invoice_line_ids.filtered(
+                lambda line: line.display_type not in ("line_section", "line_note")
+            )
+            lines_to_recompute._compute_tax_ids()
 
     def action_open_automatic_entry_wizard(self):
         """Opens the automatic entry wizard with the invoice lines"""

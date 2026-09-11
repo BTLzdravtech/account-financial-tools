@@ -20,34 +20,24 @@
                 <attribute name="optional">hide if parent.move_type in ['in_invoice', 'in_refund', 'in_receipt'] else show</attribute>
             </field>
 
-            <!-- lo dejamos siempre visible para que si el cliente modifica cosas por edicion masiva, expo/impo u otras o manualmente, pueda siempre re-computar según la FP -->
             <button name="action_update_fpos_values" position="attributes">
-                <attribute name="invisible">True</attribute>
+                <attribute name="invisible">country_code == 'AR'</attribute>
             </button>
-
-            <xpath expr="//page[@id='other_tab']//field[@name='fiscal_position_id']" position="replace">
-                <label for="fiscal_position_id"/>
-                <div class="o_row">
-                    <field name="fiscal_position_id"/>
-                    <button name="action_update_fpos_values" type="object"
-                        string=" Update Taxes"
-                        help="Recompute all taxes based on this fiscal position"
-                        class="btn-link mb-1 px-0" icon="fa-refresh"
-                        confirm="This will update all taxes based on the currently selected fiscal position."
-                        invisible="state in ['cancel', 'posted']"/>
-                </div>
+            <xpath expr="//page[@id='other_tab']//field[@name='fiscal_position_id']" position="after">
+                <button name="action_update_fpos_values" type="object"
+                    string="Update Taxes"
+                    help="Recompute all taxes based on this fiscal position"
+                    class="btn-link mb-1 px-0" icon="fa-refresh"
+                    confirm="This will update all taxes based on the currently selected fiscal position."
+                    invisible="country_code != 'AR' or state in ['cancel', 'posted']"/>
             </xpath>
-            <xpath expr="//page[@id='other_tab_entry']//field[@name='fiscal_position_id']" position="replace">
-                <label for="fiscal_position_id"/>
-                <div class="o_row">
-                    <field name="fiscal_position_id"/>
-                    <button name="action_update_fpos_values" type="object"
-                        string=" Update Taxes"
-                        help="Recompute all taxes based on this fiscal position"
-                        class="btn-link mb-1 px-0" icon="fa-refresh"
-                        confirm="This will update all taxes based on the currently selected fiscal position."
-                        invisible="state in ['cancel', 'posted']"/>
-                </div>
+            <xpath expr="//page[@id='other_tab_entry']//field[@name='fiscal_position_id']" position="after">
+                <button name="action_update_fpos_values" type="object"
+                    string="Update Taxes"
+                    help="Recompute all taxes based on this fiscal position"
+                    class="btn-link mb-1 px-0" icon="fa-refresh"
+                    confirm="This will update all taxes based on the currently selected fiscal position."
+                    invisible="country_code != 'AR' or state in ['cancel', 'posted']"/>
             </xpath>
             <button name="button_draft" position="after">
                 <button name="delete_number" string="Delete Number" invisible="state != 'cancel' or not name or name == '/'" type="object" help="Deleting the number will allow you to delete this invoice or to get a new number if you re-validate it. If this invoice represents a voided invoice, then you should not clean it." confirm="Warning! This can't be undone. Deleting the number will allow you to delete this invoice or to get a new number if you re-validate it. If this invoice represents a voided invoice, then you should not clean it. Do you want to continue?" groups="account.group_account_manager"/>
@@ -98,11 +88,13 @@
                 <attribute name="style">max-width: 25ch;</attribute>
             </xpath>
 
-        <!-- Temas de multimoneda -->
-            <xpath expr="//div[@name='currency_conversion_div']" position="replace">
-                <div name="currency_conversion_div"
+            <xpath expr="//div[@name='currency_conversion_div']" position="attributes">
+                <attribute name="invisible">country_code == 'AR' or currency_id == company_currency_id</attribute>
+            </xpath>
+            <xpath expr="//div[@name='currency_conversion_div']" position="after">
+                <div name="inverse_currency_conversion_div"
                     class="d-flex flex-nowrap gap-1 text-muted"
-                    invisible="currency_id == company_currency_id">
+                    invisible="country_code != 'AR' or currency_id == company_currency_id">
                     <span>1</span>
                     <field name="currency_id" readonly="True" options="{'no_open': True}" class="w-auto"/>
                     <span>=</span>
@@ -117,9 +109,14 @@
                 </div>
             </header>
 
-            <!-- Reemplazar el widget del calendario por el botón de cambio de moneda en línea -->
-            <xpath expr="//widget[@name='account_pick_currency_date']" position="replace">
-                <button name="%(action_account_change_currency)d" type="action" invisible="state != 'draft'" icon="fa-exchange" class="btn-link" title="Change Currency and Rate" groups="base.group_multi_currency"/>
+            <xpath expr="//widget[@name='account_pick_currency_date']" position="attributes">
+                <attribute name="invisible">country_code == 'AR' or state != 'draft' or currency_id == company_currency_id</attribute>
+            </xpath>
+            <xpath expr="//widget[@name='account_pick_currency_date']" position="after">
+                <button name="%(action_account_change_currency)d" type="action"
+                    invisible="country_code != 'AR' or state != 'draft'"
+                    icon="fa-exchange" class="btn-link" title="Change Currency and Rate"
+                    groups="base.group_multi_currency"/>
             </xpath>
 
 

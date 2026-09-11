@@ -69,8 +69,9 @@
         <field name="inherit_id" ref="account.view_account_move_line_filter"/>
         <field name="mode">primary</field>
         <field name="arch" type="xml">
-            <!-- sacamos filtro de cuenta la izquierda -->
-            <field name="account_root_id" position="replace"/>
+            <field name="account_root_id" position="attributes">
+                <attribute name="invisible">1</attribute>
+            </field>
         </field>
     </record>
 
