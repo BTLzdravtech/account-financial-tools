@@ -8,15 +8,15 @@
                 <field name="is_internal_transfer"/>
             </field>
             <xpath expr="//filter[@name='inbound_filter']" position="attributes">
-                <attribute name="domain">[('partner_type', '=', 'customer'), ('is_internal_transfer', '=', False)]</attribute>
+                <attribute name="domain">['&amp;', ('partner_type', '=', 'customer'), '|', ('country_code', '!=', 'AR'), ('is_internal_transfer', '=', False)]</attribute>
             </xpath>
             <xpath expr="//filter[@name='outbound_filter']" position="attributes">
-                <attribute name="domain">[('partner_type', '=', 'supplier'), ('is_internal_transfer', '=', False)]</attribute>
+                <attribute name="domain">['&amp;', ('partner_type', '=', 'supplier'), '|', ('country_code', '!=', 'AR'), ('is_internal_transfer', '=', False)]</attribute>
             </xpath>
             <xpath expr="//filter[@name='outbound_filter']" position="after">
                 <filter string="Internal Transfers"
                     name="internal_transfer_filter"
-                    domain="[('is_internal_transfer', '=', True)]"/>
+                    domain="[('country_code', '=', 'AR'), ('is_internal_transfer', '=', True)]"/>
             </xpath>
         </field>
     </record>
@@ -27,48 +27,37 @@
         <field name="inherit_id" ref="account.view_account_payment_form"/>
         <field name="arch" type="xml">
             <xpath expr="//group[@name='main_group']/group[@name='group1']/field[@name='payment_type']" position="before">
-                <label for="is_internal_transfer" invisible="not is_internal_transfer"/>
-                <div invisible="not is_internal_transfer">
-                    <field name="is_internal_transfer" readonly="state != 'draft'" invisible="1"  on_change="1"/>
-                    <span invisible="paired_internal_transfer_payment_id or not is_internal_transfer or state != 'draft'"
+                <label for="is_internal_transfer" invisible="country_code != 'AR' or not is_internal_transfer"/>
+                <div invisible="country_code != 'AR' or not is_internal_transfer">
+                    <field name="is_internal_transfer" readonly="state != 'draft'" invisible="1" on_change="1"/>
+                    <span invisible="country_code != 'AR' or paired_internal_transfer_payment_id or not is_internal_transfer or state != 'draft'"
                           class="fst-italic">
                         A second payment will be created in the destination journal.
                     </span>
                 </div>
             </xpath>
-            <xpath expr="//group[@name='group1']/field[@name='partner_id'][1]" position="attributes">
-                <attribute name="invisible" add="is_internal_transfer" separator=" or "/>
+            <xpath expr="//group[@name='group1']/field[@name='partner_id']" position="attributes">
+                <attribute name="invisible" add="country_code == 'AR' and is_internal_transfer" separator=" or "/>
             </xpath>
-            <xpath expr="//group[@name='group1']/field[@name='partner_id'][2]" position="attributes">
-                <attribute name="invisible" add="is_internal_transfer" separator=" or "/>
+            <xpath expr="//group[@name='group2']/field[@name='partner_bank_id']" position="attributes">
+                <attribute name="invisible" add="country_code == 'AR' and is_internal_transfer" separator=" or "/>
+                <attribute name="required" add="not (country_code == 'AR' and is_internal_transfer)" separator=" and "/>
             </xpath>
-            <xpath expr="//group[@name='group2']/field[@name='partner_bank_id'][1]" position="attributes">
-                <attribute name="invisible" add="is_internal_transfer" separator=" or "/>
-                <attribute name="required" add="not is_internal_transfer" separator=" and "/>
-            </xpath>
-            <xpath expr="//group[@name='group2']/field[@name='partner_bank_id'][2]" position="attributes">
-                <attribute name="invisible" add="is_internal_transfer" separator=" or "/>
-                <attribute name="required" add="not is_internal_transfer" separator=" and "/>
-            </xpath>
-            <xpath expr="//group[@name='group2']/field[@name='partner_bank_id'][3]" position="attributes">
-                <attribute name="invisible" add="is_internal_transfer" separator=" or "/>
-                <attribute name="required" add="not is_internal_transfer" separator=" and "/>
-            </xpath>
-            <xpath expr="//group[@name='group2']/field[@name='partner_bank_id'][3]" position="after">
+            <xpath expr="//group[@name='group2']/field[@name='partner_bank_id' and @invisible]" position="after">
                 <field name="destination_journal_domain" invisible="1"/>
                 <field name="destination_company_id"
                     string="Dest Company"
                     groups="base.group_multi_company"
-                    required="is_internal_transfer and state == 'draft'"
-                    invisible="not is_internal_transfer"
+                    required="country_code == 'AR' and is_internal_transfer and state == 'draft'"
+                    invisible="country_code != 'AR' or not is_internal_transfer"
                     readonly="state != 'draft'"
                 />
                 <field name="destination_journal_id"
                        placeholder="e.g. Cash"
                        context="{'default_partner_id': partner_id}"
-                       invisible="not is_internal_transfer"
+                       invisible="country_code != 'AR' or not is_internal_transfer"
                        readonly="state != 'draft'"
-                       required="is_internal_transfer and state == 'draft'"/>
+                       required="country_code == 'AR' and is_internal_transfer and state == 'draft'"/>
             </xpath>
         </field>
     </record>
@@ -84,7 +73,7 @@
             'display_account_trust': True,
             }
         </field>
-        <field name="domain">[('is_internal_transfer', '=', True)]</field>
+        <field name="domain">[('country_code', '=', 'AR'), ('is_internal_transfer', '=', True)]</field>
         <field name="help" type="html">
             <p class="oe_view_nocontent_create">
             Click to register a transfer between liquidity journals
