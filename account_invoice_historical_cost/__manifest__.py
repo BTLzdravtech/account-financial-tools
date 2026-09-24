@@ -1,6 +1,6 @@
 ##############################################################################
 #
-#    Copyright (C) 2015  ADHOC SA  (http://www.adhoc.com.ar)
+#    Copyright (C) 2026  ADHOC SA  (http://www.adhoc.com.ar)
 #    All Rights Reserved.
 #
 #    This program is free software: you can redistribute it and/or modify
@@ -18,24 +18,26 @@
 #
 ##############################################################################
 {
-    "name": "Account Internal Transfer",
-    "version": "19.0.1.5.0",
+    "name": "Account Invoice Historical Cost",
+    "version": "19.0.1.0.0",
     "category": "Accounting",
     "sequence": 14,
-    "summary": "",
+    "summary": "Freeze the real cost (COGS) on the invoice line so historical "
+    "margin is not recomputed retroactively",
     "author": "ADHOC SA",
     "website": "www.adhoc.com.ar",
     "license": "AGPL-3",
     "images": [],
     "depends": [
-        "account",
+        "stock_account",
     ],
     "data": [
-        "views/account_payment_views.xml",
-        "views/report_account_transfer.xml",
+        "views/account_move_line_views.xml",
+        "views/account_move_views.xml",
+        "reports/account_invoice_report_views.xml",
     ],
     "demo": [],
     "installable": True,
-    "auto_install": True,
+    "auto_install": False,
     "application": False,
 }
