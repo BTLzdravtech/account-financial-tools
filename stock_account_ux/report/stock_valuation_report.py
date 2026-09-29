@@ -353,7 +353,15 @@ class StockValuationReport(models.AbstractModel):
         section because the variation entry has two legs
         (``_prepare_inventory_aml_vals``) but has no products booked to it— and also of a
         valuation account whose difference has no pending detail left.
+
+        Argentina only, as the whole per-origin breakdown is: the same lock the closing
+        entry uses in ``res.company::_get_stock_valuation_account_vals``. Reaching the
+        count searches ``stock.move`` on ``related_account_move_id``, which is not stored
+        and whose search method has to walk every candidate move of the company — work
+        no other localisation has any use for.
         """
+        if self.env.company.country_code != "AR":
+            return
         lines = (data.get("stock_variation") or {}).get("lines") or []
         if not lines:
             return
