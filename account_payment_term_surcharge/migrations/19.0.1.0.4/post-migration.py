@@ -18,5 +18,4 @@ def migrate(env, version):
         for field_name in fields_to_recompute:
             env.add_to_compute(moves._fields[field_name], moves)
         moves._recompute_recordset(fields_to_recompute)
-        # Not cr.commit(): COMMIT drops the savepoint that @openupgrade.migrate() wraps this in.
-        env.invalidate_all()
+        env.cr.commit()
