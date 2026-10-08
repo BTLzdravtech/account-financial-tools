@@ -85,6 +85,7 @@ class StockMove(models.Model):
         """
         if not self.ids:
             return {}
+        # No search limit: every posted adjustment is needed to keep the latest one.
         product_values = (
             self.env["product.value"]
             .sudo()
@@ -191,6 +192,7 @@ class StockMove(models.Model):
         and ``False`` arrives as a collection (``[False]``), so operator and value are
         normalised before deciding.
         """
+        # No search limit: a limit would drop valid moves from the returned domain.
         candidates = self.search(
             [
                 "|",
