@@ -85,6 +85,7 @@ class StockMove(models.Model):
         """
         if not self.ids:
             return {}
+        # No search limit: every posted adjustment is needed to keep the latest one.
         product_values = (
             self.env["product.value"]
             .sudo()
@@ -191,10 +192,7 @@ class StockMove(models.Model):
         and ``False`` arrives as a collection (``[False]``), so operator and value are
         normalised before deciding.
         """
-        # Scoped to the active companies: the drill-down count in the valuation report
-        # calls this through ``sudo()``, so record rules no longer narrow the candidates
-        # and an unscoped search loads every move of every company before the compute is
-        # evaluated on it. The field is only ever read per company.
+        # No search limit: a limit would drop valid moves from the returned domain.
         candidates = self.search(
             [
                 ("company_id", "in", self.env.companies.ids),
