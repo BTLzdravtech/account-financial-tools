@@ -195,6 +195,7 @@ class StockMove(models.Model):
         # No search limit: a limit would drop valid moves from the returned domain.
         candidates = self.search(
             [
+                ("company_id", "in", self.env.companies.ids),
                 "|",
                 "|",
                 ("account_move_id", "!=", False),
