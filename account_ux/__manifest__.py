@@ -19,7 +19,7 @@
 ##############################################################################
 {
     "name": "Account UX",
-    "version": "19.0.1.29.0",
+    "version": "19.0.1.30.0",
     "category": "Accounting",
     "sequence": 14,
     "summary": "",
@@ -40,7 +40,6 @@
         "data/ir_config_parameter_data.xml",
         "data/account_automatic_entry_actions.xml",
         "wizards/account_change_currency_views.xml",
-        "wizards/res_config_settings_views.xml",
         "views/account_account_views.xml",
         "views/account_fiscal_position_views.xml",
         "views/account_journal_views.xml",
