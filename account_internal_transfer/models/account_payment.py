@@ -181,7 +181,10 @@ class AccountPayment(models.Model):
         """
         self.ensure_one()
         paired_payment_type = self._get_paired_payment_type()
-        destination_line = self.destination_payment_method_line_id
+        paired_method_line = (
+            self.destination_payment_method_line_id
+            or self.destination_journal_id._get_available_payment_method_lines(paired_payment_type)[:1]
+        )
         return {
             "journal_id": self.destination_journal_id.id,
             "currency_id": (self.destination_journal_id.currency_id or self.company_currency_id).id,
@@ -189,10 +192,9 @@ class AccountPayment(models.Model):
             "destination_company_id": self.company_id.id,
             "destination_journal_id": self.journal_id.id,
             "payment_type": paired_payment_type,
-            "payment_method_line_id": (
-                destination_line
-                or self.destination_journal_id._get_available_payment_method_lines(paired_payment_type)[:1]
-            ).id,
+            "payment_method_line_id": paired_method_line.id,
+            # copy() carries the origin account when the field is editable (l10n_account_withholding_tax)
+            "outstanding_account_id": paired_method_line.payment_account_id.id,
             "move_id": None,
             "memo": self.memo,
             "paired_internal_transfer_payment_id": self.id,
@@ -284,11 +286,18 @@ class AccountPayment(models.Model):
                 ).mapped("paired_internal_transfer_payment_id")
                 - self
             )
+        # A transfer already posted before and without a pair comes from older data, where the destination
+        # entry has no payment of its own: creating the pair now would register that entry twice.
+        unpaired_reposted = self.filtered(
+            lambda pay: (
+                pay.is_internal_transfer and not pay.paired_internal_transfer_payment_id and pay.move_id.posted_before
+            )
+        )
         super().action_post()
         if paired_to_post:
             paired_to_post.with_context(skip_paired_sync=True).action_post()
         transfers = self.filtered("is_internal_transfer")
-        transfers.filtered(
+        (transfers - unpaired_reposted).filtered(
             lambda pay: not pay.paired_internal_transfer_payment_id
         )._create_paired_internal_transfer_payment()
         # A leg reset to draft and confirmed again already has its pair: only the reconciliation

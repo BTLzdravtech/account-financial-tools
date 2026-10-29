@@ -11,6 +11,10 @@ LINE_TYPE_STOCK_MOVE = "stock_move"
 LINE_TYPE_PRODUCT_VALUE = "product_value"
 VALID_LINE_TYPES = (LINE_TYPE_STOCK_MOVE, LINE_TYPE_PRODUCT_VALUE)
 
+# Context key carrying the Stock Move Types filter, read by every place that narrows
+# the Stock Moves component (report, drill-down and closing).
+STOCK_MOVE_TYPES_CTX = "stock_valuation_stock_move_types"
+
 
 class StockValuationReport(models.AbstractModel):
     _inherit = "stock_account.stock.valuation.report"
@@ -25,10 +29,19 @@ class StockValuationReport(models.AbstractModel):
         cost_methods=None,
         valuations=None,
         line_types=None,
+        stock_move_types=None,
     ):
         """Extend the standard signature (``date`` only) with the report filters. All
-        of them are optional: with none, the standard is used as is."""
-        data = self.with_context(allowed_company_ids=self.env.company.ids)._get_report_data(
+        of them are optional: with none, the standard is used as is.
+
+        ``stock_move_types`` only applies to stock moves, so it forces the Movement Type
+        filter to Stock Moves."""
+        self = self.with_context(allowed_company_ids=self.env.company.ids)
+        stock_move_types = self._normalize_stock_move_types(stock_move_types)
+        if stock_move_types:
+            line_types = [LINE_TYPE_STOCK_MOVE]
+            self = self.with_context(**{STOCK_MOVE_TYPES_CTX: stock_move_types})
+        data = self._get_report_data(
             date=date,
             product_ids=product_ids,
             categ_ids=categ_ids,
@@ -314,6 +327,9 @@ class StockValuationReport(models.AbstractModel):
         Same scope as the variation's Stock Moves component: products whose valuation
         account is the one on the line, done moves inside the valued perimeter, with no
         entry and up to the report date. Honours the report's active filters."""
+        stock_move_types = self._normalize_stock_move_types((filters or {}).get("stock_move_types"))
+        if stock_move_types:
+            self = self.with_context(**{STOCK_MOVE_TYPES_CTX: stock_move_types})
         company, products, account = self._get_drilldown_scope(account_id, date, filters)
         if not products:
             return self._empty_drilldown_action("stock.move", account)
@@ -350,7 +366,11 @@ class StockValuationReport(models.AbstractModel):
         """Unaccounted moves of those products, inside the valued perimeter and up to
         the report date."""
         domain = self._get_unaccounted_moves_base_domain(company, products, date)
-        return domain & self._get_valued_directions_domain()
+        domain &= self._get_valued_directions_domain()
+        if self.env.context.get(STOCK_MOVE_TYPES_CTX):
+            # Same scope as the Stock Moves component: the selected types, no revalued moves.
+            domain &= self._get_line_type_move_domain(products, [LINE_TYPE_STOCK_MOVE])
+        return domain
 
     def _get_variation_product_values_domain(self, company, products, date):
         """Unaccounted value adjustments of those products, up to the report date. An
@@ -566,6 +586,43 @@ class StockValuationReport(models.AbstractModel):
             return []
         return selected
 
+    def _normalize_stock_move_types(self, stock_move_types):
+        """Keep the valid types only. Unlike Movement Type, selecting all of them is
+        still a filter: internal moves and dropshipping belong to no type."""
+        if not stock_move_types:
+            return []
+        valid = self._get_stock_move_type_domains()
+        return [move_type for move_type in stock_move_types if move_type in valid]
+
+    def _get_stock_move_type_domains(self):
+        """``{type: stock.move domain}`` of the Stock Move Types filter. Keep it aligned
+        with ``stockMoveTypeOptions`` on the JS side."""
+        return {
+            "purchase": Domain("is_dropship", "=", False)
+            & (Domain("location_usage", "=", "supplier") | Domain("location_dest_usage", "=", "supplier")),
+            "sale": Domain("is_dropship", "=", False)
+            & (Domain("location_usage", "=", "customer") | Domain("location_dest_usage", "=", "customer")),
+            # Any move against an adjustment or loss location; scraps have their own type.
+            "inventory": Domain("scrap_id", "=", False)
+            & (Domain("location_usage", "=", "inventory") | Domain("location_dest_usage", "=", "inventory")),
+            "scrap": Domain("scrap_id", "!=", False),
+            "production": Domain("location_usage", "=", "production")
+            | Domain("location_dest_usage", "=", "production"),
+            # Only the standard inter-company transit location, which has no company.
+            "intercompany_transit": (
+                Domain("location_usage", "=", "transit") & Domain("location_id.company_id", "=", False)
+            )
+            | (Domain("location_dest_usage", "=", "transit") & Domain("location_dest_id.company_id", "=", False)),
+        }
+
+    def _get_stock_move_types_domain(self):
+        """Moves of the types selected in the context, or no restriction without it."""
+        stock_move_types = self.env.context.get(STOCK_MOVE_TYPES_CTX)
+        if not stock_move_types:
+            return Domain.TRUE
+        domains = self._get_stock_move_type_domains()
+        return Domain.OR(domains[move_type] for move_type in stock_move_types)
+
     def _get_valid_line_types(self):
         """The origins the variation can be broken down into. A method and not the module
         constant so a third origin can be added by inheritance — a currency revaluation,
@@ -581,6 +638,9 @@ class StockValuationReport(models.AbstractModel):
         With any of those filters on, the products with a booked balance on their
         valuation account are added (``_get_booked_products``), even with no stock at the
         date or archived: the filtered Initial Balance has to bring their journal items.
+
+        With the Stock Move Types filter on, the products with pending moves of those
+        types are added too (``_get_pending_move_products``).
         """
         # sudo and valuation context as in the standard: ``qty_available`` expands kit
         # BoMs that an accounting user cannot read.
@@ -594,6 +654,10 @@ class StockValuationReport(models.AbstractModel):
         valued_products = valued_product_context.search(domain)
         if any([product_ids, categ_ids, cost_methods, valuations]):
             valued_products |= self._get_booked_products(company, date, product_ids, categ_ids).with_env(
+                valued_products.env
+            )
+        if self.env.context.get(STOCK_MOVE_TYPES_CTX):
+            valued_products |= self._get_pending_move_products(company, date, product_ids, categ_ids).with_env(
                 valued_products.env
             )
 
@@ -650,6 +714,28 @@ class StockValuationReport(models.AbstractModel):
             if product.with_company(company)._get_product_accounts()["stock_valuation"] == account:
                 booked |= product
         return booked
+
+    def _get_pending_move_products(self, company, date, product_ids, categ_ids):
+        """Valued products matching the Product / Category filters, archived ones
+        included, with unaccounted moves of the selected Stock Move Types up to the date.
+
+        They may have no stock at the date: a receipt and a sale of the same quantity
+        leave the product at zero and net out, but filtered by type they no longer do.
+        """
+        product_domain = Domain(company._get_valuation_product_domain())
+        product_domain &= self._get_valuation_report_extra_domain(product_ids, categ_ids)
+        domain = Domain(
+            [
+                ("related_account_move_id", "=", False),
+                ("company_id", "=", company.id),
+                ("state", "=", "done"),
+            ]
+        ) & Domain("product_id", "any", product_domain)
+        if date:
+            domain &= Domain([("date", "<=", date)])
+        domain &= self._get_valued_directions_domain() & self._get_stock_move_types_domain()
+        groups = self.env["stock.move"].sudo()._read_group(domain, ["product_id"])
+        return self.env["product.product"].sudo().with_company(company).browse([product.id for (product,) in groups])
 
     def _get_valuation_report_extra_domain(self, product_ids, categ_ids):
         """Extra ``product.product`` domain for the Product and Category filters, the
@@ -869,12 +955,14 @@ class StockValuationReport(models.AbstractModel):
     def _get_line_type_move_domain(self, products, line_types):
         """Narrow the Stock Moves component down to the NON revalued physical moves: a
         revalued ``stock.move`` stays out, taken by the Product Value remainder. Only
-        called with ``[stock_move]``; any other case restricts nothing."""
+        called with ``[stock_move]``; any other case restricts nothing. The Stock Move
+        Types filter narrows it further."""
         if line_types != [LINE_TYPE_STOCK_MOVE]:
             return Domain.TRUE
+        domain = self._get_stock_move_types_domain()
         reval_move_ids = self._get_revalued_move_ids(products)
         # With no revaluations, every move is a Stock Move.
-        return Domain([("id", "not in", reval_move_ids)]) if reval_move_ids else Domain.TRUE
+        return domain & Domain([("id", "not in", reval_move_ids)]) if reval_move_ids else domain
 
     def _get_revalued_move_ids(self, products):
         """Moves of those products carrying an adjustment that CHANGED their value.
