@@ -42,7 +42,7 @@ class AccountJournal(models.Model):
         readonly=False,
     )
 
-    @api.depends("user_ids", "modification_user_ids")
+    @api.depends()
     def _compute_journal_restriction(self):
         for rec in self:
             if rec.user_ids:
@@ -111,18 +111,22 @@ class AccountJournal(models.Model):
         cualquier lugar que se use un campo related a algo del diario
         """
         user = self.env.user
+        journal_ids = user.journal_ids.ids + user.modification_journal_ids.ids
         # Agregamos el with_user ya que por alguna razon llega con sudo y nos da un falso positivo indicando
         # que el usuario es super usuario. De esta forma nos aseguramos verdaderamente si lo es.
-        if not self.with_user(user.id).env.is_superuser():
+        if not self.with_user(user.id).env.is_superuser() and self.env.context.get("journal_security", False):
             domain += ["|", ("modification_user_ids", "=", False), ("id", "not in", user.journal_ids.ids)]
-            journal_ids = user.journal_ids.ids + user.modification_journal_ids.ids
-            if limit == 1 and journal_ids:
-                # Agregamos el domain de los journals donde el usuario tiene permisos
-                domain += [
-                    "|",
-                    ("user_ids", "=", False),
-                    ("id", "in", journal_ids),
-                ]
+        if not self.with_user(user.id).env.is_superuser() and self.env.context.get("journal_security", False):
+            domain += ["|", ("modification_user_ids", "=", False), ("id", "in", journal_ids)]
+        if limit == 1 and not self.with_user(user.id).env.is_superuser():
+            # Agregamos el domain de los journals donde el usuario tiene permisos
+            domain += [
+                "|",
+                "&",
+                ("user_ids", "=", False),
+                ("modification_user_ids", "=", False),
+                ("id", "in", journal_ids),
+            ]
         return super()._search(domain, offset, limit, order)
 
     @api.onchange("journal_restriction")
@@ -131,13 +135,13 @@ class AccountJournal(models.Model):
         Al cambiar una opción por otra, limpiar el campo M2M
         que se oculta para evitar conflictos al guardar.
         """
-        if self.journal_restriction == "modification" and self.user_ids:
+        if self.journal_restriction == "modification":
             self.modification_user_ids = self.user_ids
             self.user_ids = None
-        elif self.journal_restriction == "total" and self.modification_user_ids:
+        elif self.journal_restriction == "total":
             self.user_ids = self.modification_user_ids
             self.modification_user_ids = None
-        elif self.journal_restriction == "none":
+        else:
             # Es necesario que se limpien ambos campos cuando se seleccione
             # "Ninguna", sino no se guardan los cambios.
             self.user_ids = None
