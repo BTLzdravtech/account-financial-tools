@@ -17,7 +17,9 @@
                 ('company_id', 'in', company_ids),
                 '&amp;',
                 ('company_id', 'parent_of', company_ids),
-                ('shared_to_branches', '=', True)
+                '|',
+                ('shared_to_branches', '=', True),
+                ('company_id.account_fiscal_country_id.code', '!=', 'AR')
             ]
         </field>
     </record>

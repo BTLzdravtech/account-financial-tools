@@ -3,6 +3,7 @@
 # directory
 ##############################################################################
 from odoo import _, models
+from odoo.exceptions import AccessError
 from odoo.fields import Domain
 from odoo.tools.misc import formatLang
 
@@ -178,10 +179,14 @@ class ResPartner(models.Model):
         balance_in_currency_name = ""
         domain = []
 
+        if not (
+            self.env.user.has_group("account.group_account_invoice")
+            or self.env.user.has_group("account.group_account_readonly")
+        ):
+            raise AccessError(_("You are not allowed to print partner debt reports."))
+        companies = self.env.companies
         if company_id:
-            companies = self.env["res.company"].browse(company_id)
-        else:
-            companies = self.env.companies
+            companies &= self.env["res.company"].browse(company_id)
         company_currencies = companies.mapped("currency_id")
         domain += [("company_id", "in", companies.ids)]
 
