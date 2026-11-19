@@ -105,6 +105,24 @@ class AccountJournal(models.Model):
         self.env.registry.clear_cache()
 
     @api.model
+    def _journal_security_hidden_journal_ids(self):
+        """Journals totally restricted to other users, i.e. what the read rules hide from the current user."""
+        # Plain SQL: this runs inside ir.rule._eval_context, where reading account.journal through the ORM would
+        # evaluate the account.journal rules again.
+        self.env.cr.execute(
+            """
+                SELECT journal_id
+                FROM journal_security_journal_users
+                EXCEPT
+                SELECT journal_id
+                FROM journal_security_journal_users
+                WHERE user_id = %s
+            """,
+            (self.env.uid,),
+        )
+        return tuple(r[0] for r in self.env.cr.fetchall())
+
+    @api.model
     def _search(self, domain, offset=0, limit=None, order=None, **kwargs):
         """
         Para que usuarios los usuarios no puedan elegir diarios donde no puedan

@@ -38,28 +38,34 @@
 
     <!-- Restricted Users Journals Rules -->
 
+    <!-- Global rules apply to every user of every company, so they must stay cheap: do not go back to
+         ('journal_id.user_ids', '=', False). Odoo 19 compiles it to a correlated NOT EXISTS inside an OR, which
+         PostgreSQL evaluates per journal item. journal_security_hidden_journal_ids (ir.rule._eval_context) is empty
+         when no journal is restricted to other users, and "not in ()" then drops the rule from the SQL.
+         Keep migrations/19.0.1.2.0/post-migration.py in sync: these records are noupdate. -->
+
     <record model="ir.rule" id="journal_security_rule">
         <field name="name">Journals restricted to users</field>
         <field name="model_id" ref="account.model_account_journal"/>
-        <field name="domain_force">['|', ('user_ids', '=', False), ('id', 'in', user.journal_ids.ids)]</field>
+        <field name="domain_force">[('id', 'not in', journal_security_hidden_journal_ids)]</field>
     </record>
 
     <record model="ir.rule" id="journal_security_rule_account_move">
         <field name="name">Account Move of Jornals restricted to user</field>
         <field name="model_id" ref="account.model_account_move"/>
-        <field name="domain_force">['|', ('journal_id.user_ids', '=' ,False), ('journal_id.id', 'in', user.journal_ids.ids)]</field>
+        <field name="domain_force">[('journal_id', 'not in', journal_security_hidden_journal_ids)]</field>
     </record>
 
     <record model="ir.rule" id="journal_security_rule_account_move_line">
         <field name="name">Account Move Line of Jornals restricted to user</field>
         <field name="model_id" ref="account.model_account_move_line"/>
-        <field name="domain_force">['|', '|', ('journal_id', '=' ,False), ('journal_id.user_ids', '=' ,False), ('journal_id.id', 'in', user.journal_ids.ids)]</field>
+        <field name="domain_force">[('journal_id', 'not in', journal_security_hidden_journal_ids)]</field>
     </record>
 
     <record model="ir.rule" id="journal_security_rule_account_payment">
         <field name="name">Account Payments of Jornals restricted to user</field>
         <field name="model_id" ref="account.model_account_payment"/>
-        <field name="domain_force">['|', ('journal_id.user_ids', '=' ,False), ('journal_id', 'in', user.journal_ids.ids)]</field>
+        <field name="domain_force">[('journal_id', 'not in', journal_security_hidden_journal_ids)]</field>
     </record>
 
 </odoo>
