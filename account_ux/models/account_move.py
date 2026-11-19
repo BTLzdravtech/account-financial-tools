@@ -43,6 +43,8 @@ class AccountMove(models.Model):
         return pdf_base64, __
 
     def delete_number(self):
+        if not self.env.user.has_group("account.group_account_manager"):
+            raise UserError(_("Only accounting managers can delete an invoice number."))
         self.filtered(lambda x: x.state == "cancel").write({"name": "/"})
 
     def action_post(self):

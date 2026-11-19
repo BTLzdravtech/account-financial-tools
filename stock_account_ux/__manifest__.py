@@ -1,6 +1,6 @@
 {
     "name": "Stock Move UX",
-    "version": "19.0.1.2.2",
+    "version": "19.0.1.2.3",
     "category": "Warehouse Management",
     "author": "ADHOC SA",
     "website": "https://www.adhoc.com.ar",
